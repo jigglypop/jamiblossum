@@ -68,11 +68,24 @@ function minorColor(type: string): string {
 }
 function adjColor(type: string): string {
   switch (type) {
-    case 'flower': return 'text-pink-400/70'
-    case 'helper': return 'text-emerald-400/70'
-    default: return 'text-zinc-500'
+    case 'flower': return 'text-pink-400/80'
+    case 'helper': return 'text-emerald-400/80'
+    case 'tough': return 'text-rose-400/70'
+    case 'soft': return 'text-cyan-300/70'
+    default: return 'text-zinc-400'
   }
 }
+
+function palaceCellClass(active: boolean, isTrine: boolean, isOpposite: boolean, ming: boolean): string {
+  const base = 'relative flex cursor-pointer flex-col overflow-y-auto rounded-lg border px-3 py-2 text-left transition-all'
+  if (active) return `${base} border-violet-500/60 bg-violet-950/40 shadow-[0_0_16px_rgba(139,92,246,0.15)]`
+  if (isTrine) return `${base} border-sky-500/40 bg-sky-950/15 hover:border-sky-400/60 hover:bg-sky-950/25`
+  if (isOpposite) return `${base} border-orange-500/40 bg-orange-950/12 hover:border-orange-400/60 hover:bg-orange-950/20`
+  if (ming) return `${base} border-amber-500/30 bg-amber-950/15 hover:border-amber-400/50 hover:bg-amber-950/25`
+  return `${base} border-zinc-700/30 bg-zinc-900/20 hover:border-zinc-600/50 hover:bg-zinc-800/25`
+}
+
+const INPUT_CLS = 'rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1.5 text-xs text-zinc-200 outline-none transition-colors focus:border-violet-500/40'
 
 function starStr(s: Star): string {
   const bright = fmtBright(s.brightness)
@@ -186,7 +199,7 @@ function App() {
   }))
 
   const [busy, setBusy] = useState(false)
-  const [calcError, setCalcError] = useState<string | null>(null)
+  const [_calcError, setCalcError] = useState<string | null>(null)
   const [result, setResult] = useState<Chart | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -344,18 +357,7 @@ function App() {
                 <button
                   key={idx}
                   type="button"
-                  className={[
-                    'relative flex cursor-pointer flex-col overflow-y-auto rounded-lg border px-4 py-3 text-left transition-all',
-                    active
-                      ? 'border-violet-500/60 bg-violet-950/40 shadow-[0_0_16px_rgba(139,92,246,0.15)]'
-                      : isTrine
-                        ? 'border-sky-500/40 bg-sky-950/15 hover:border-sky-400/60 hover:bg-sky-950/25'
-                        : isOpposite
-                          ? 'border-orange-500/40 bg-orange-950/12 hover:border-orange-400/60 hover:bg-orange-950/20'
-                          : ming
-                            ? 'border-amber-500/30 bg-amber-950/15 hover:border-amber-400/50 hover:bg-amber-950/25'
-                            : 'border-zinc-700/30 bg-zinc-900/20 hover:border-zinc-600/50 hover:bg-zinc-800/25',
-                  ].join(' ')}
+                  className={palaceCellClass(active, isTrine, isOpposite, ming)}
                   style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }}
                   onClick={() => setSelectedIndex(idx)}
                 >
@@ -364,7 +366,7 @@ function App() {
                     <span className={`text-sm font-bold ${ming ? 'text-amber-300' : active ? 'text-violet-300' : 'text-zinc-100'}`}>
                       {palace.name}
                     </span>
-                    <span className="text-xs text-zinc-500">{palace.heavenlyStem}{palace.earthlyBranch}</span>
+                    <span className="text-[11px] text-zinc-500">{palace.heavenlyStem}{palace.earthlyBranch}</span>
                     {ming && <span className="rounded bg-amber-500/25 px-1 py-px text-[10px] font-bold text-amber-400">명</span>}
                     {palace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1 py-px text-[10px] font-bold text-sky-400">신</span>}
                     {isTrine && !active && <span className="rounded bg-sky-500/20 px-1 py-px text-[10px] font-bold text-sky-400">삼</span>}
@@ -372,21 +374,21 @@ function App() {
                   </div>
 
                   {/* Major stars */}
-                  <div className="mt-1.5 space-y-0.5">
+                  <div className="mt-1 space-y-0.5">
                     {palace.majorStars.map((s, si) => (
                       <div key={si} className="flex items-baseline gap-1">
                         <span className="text-sm font-bold text-white">{s.name}</span>
-                        {fmtBright(s.brightness) && <span className="text-xs text-zinc-400">{fmtBright(s.brightness)}</span>}
-                        {s.mutagen && <span className="text-xs font-bold text-amber-400">{s.mutagen}</span>}
+                        {fmtBright(s.brightness) && <span className="text-[11px] text-zinc-400">{fmtBright(s.brightness)}</span>}
+                        {s.mutagen && <span className="text-[11px] font-bold text-amber-400">{s.mutagen}</span>}
                       </div>
                     ))}
                   </div>
 
-                  {/* Minor stars - colored by 길성/살성 */}
+                  {/* Minor stars - colored by type */}
                   {palace.minorStars.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                    <div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5">
                       {palace.minorStars.map((s, si) => (
-                        <span key={si} className={`text-xs ${minorColor(s.type)}`}>
+                        <span key={si} className={`text-[11px] ${minorColor(s.type)}`}>
                           {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
                           {s.mutagen ? <span className="font-bold text-amber-400"> {s.mutagen}</span> : null}
                         </span>
@@ -394,18 +396,28 @@ function App() {
                     </div>
                   )}
 
-                  {/* Adjective stars (잡성) - colored by type */}
+                  {/* Adjective stars (잡성) */}
                   {palace.adjectiveStars.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                    <div className="mt-1 flex flex-wrap gap-x-1 gap-y-0.5">
                       {palace.adjectiveStars.map((s, si) => (
-                        <span key={si} className={`text-[11px] ${adjColor(s.type)}`}>{s.name}</span>
+                        <span key={si} className={`text-[10px] ${adjColor(s.type)}`}>{s.name}</span>
                       ))}
+                    </div>
+                  )}
+
+                  {/* 12신 */}
+                  {(palace.changsheng12 || palace.boshi12) && (
+                    <div className="mt-1 flex flex-wrap gap-x-1.5 text-[9px] text-zinc-500">
+                      {palace.changsheng12 && <span><span className="text-zinc-600">장</span>{palace.changsheng12}</span>}
+                      {palace.boshi12 && <span><span className="text-zinc-600">박</span>{palace.boshi12}</span>}
+                      {palace.jiangqian12 && <span><span className="text-zinc-600">전</span>{palace.jiangqian12}</span>}
+                      {palace.suiqian12 && <span><span className="text-zinc-600">세</span>{palace.suiqian12}</span>}
                     </div>
                   )}
 
                   {/* Stage */}
                   {palace.stage && (
-                    <div className="mt-auto pt-1 text-right text-[10px] text-zinc-600">
+                    <div className="mt-auto pt-0.5 text-right text-[10px] text-zinc-600">
                       {palace.stage.from}-{palace.stage.to}세
                     </div>
                   )}
@@ -413,8 +425,33 @@ function App() {
               )
             })}
 
-            {/* Center 2x2 - empty */}
-            <div className="col-start-2 col-end-4 row-start-2 row-end-4" />
+            {/* Center 2x2 - Chart info */}
+            <div className="col-start-2 col-end-4 row-start-2 row-end-4 flex flex-col items-center justify-center gap-3 rounded-lg border border-zinc-800/15 bg-zinc-950/25 p-4">
+              {result ? (
+                <>
+                  <div className="text-center">
+                    <div className="text-base font-bold text-zinc-100">자미두수 명반</div>
+                    <div className="mt-1 text-[11px] text-zinc-500">{result.solarDate} ({result.lunarDate})</div>
+                    <div className="text-[11px] text-zinc-500">{result.time} ({result.timeRange})</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                    <div><span className="text-zinc-500">명주</span> <span className="font-semibold text-violet-300">{result.soul}</span></div>
+                    <div><span className="text-zinc-500">신주</span> <span className="font-semibold text-sky-300">{result.body}</span></div>
+                    <div className="col-span-2 text-center"><span className="text-zinc-500">오행국</span> <span className="font-semibold text-amber-300">{result.fiveElementsClass}</span></div>
+                  </div>
+                  {result.saju && (
+                    <div className="flex gap-3">
+                      <PillarBox label="시주" pillar={result.saju.hour} />
+                      <PillarBox label="일주" pillar={result.saju.day} />
+                      <PillarBox label="월주" pillar={result.saju.month} />
+                      <PillarBox label="년주" pillar={result.saju.year} />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-sm text-zinc-700">명반을 생성하세요</div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -438,24 +475,24 @@ function App() {
           <div className="grid grid-cols-2 gap-1.5">
             <label className="grid gap-0.5">
               <span className="text-[10px] text-zinc-500">날짜</span>
-              <input className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1.5 text-xs text-zinc-200 outline-none transition-colors focus:border-violet-500/40" value={request.date} placeholder="2000-8-16" onChange={e => setRequest(r => ({ ...r, date: e.target.value }))} />
+              <input className={INPUT_CLS} value={request.date} placeholder="2000-8-16" onChange={e => setRequest(r => ({ ...r, date: e.target.value }))} />
             </label>
             <label className="grid gap-0.5">
               <span className="text-[10px] text-zinc-500">시간</span>
-              <input className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1.5 text-xs text-zinc-200 outline-none transition-colors focus:border-violet-500/40" value={request.time ?? '12:00'} placeholder="13:05" onChange={e => setRequest(r => ({ ...r, time: e.target.value, timeIndex: undefined }))} />
+              <input className={INPUT_CLS} value={request.time ?? '12:00'} placeholder="13:05" onChange={e => setRequest(r => ({ ...r, time: e.target.value, timeIndex: undefined }))} />
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-1.5">
             <label className="grid gap-0.5">
               <span className="text-[10px] text-zinc-500">성별</span>
-              <select className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1.5 text-xs text-zinc-200 outline-none transition-colors focus:border-violet-500/40 hover:border-zinc-700" value={request.gender} onChange={e => setRequest(r => ({ ...r, gender: e.target.value }))}>
+              <select className={`${INPUT_CLS} hover:border-zinc-700`} value={request.gender} onChange={e => setRequest(r => ({ ...r, gender: e.target.value }))}>
                 <option value="남">남</option><option value="여">여</option>
               </select>
             </label>
             <label className="grid gap-0.5">
               <span className="text-[10px] text-zinc-500">언어</span>
-              <select className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1.5 text-xs text-zinc-200 outline-none transition-colors focus:border-violet-500/40 hover:border-zinc-700" value={request.language ?? 'ko-KR'} onChange={e => setRequest(r => ({ ...r, language: e.target.value }))}>
+              <select className={`${INPUT_CLS} hover:border-zinc-700`} value={request.language ?? 'ko-KR'} onChange={e => setRequest(r => ({ ...r, language: e.target.value }))}>
                 <option value="ko-KR">한국어</option><option value="zh-CN">简中</option><option value="zh-TW">繁中</option><option value="en-US">EN</option><option value="ja-JP">JP</option>
               </select>
             </label>
@@ -468,16 +505,16 @@ function App() {
           {showAdvanced && (
             <div className="space-y-2 rounded-md border border-zinc-800/30 bg-zinc-950/20 p-2.5">
               <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">시간 인덱스 (0~12)</span>
-                <input className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1 text-xs outline-none focus:border-violet-500/40" inputMode="numeric" value={request.timeIndex ?? ''} placeholder="자동" onChange={e => { const v = e.target.value.trim(); setRequest(r => ({ ...r, timeIndex: v === '' ? undefined : Number(v) })) }} />
+                <input className={INPUT_CLS} inputMode="numeric" value={request.timeIndex ?? ''} placeholder="자동" onChange={e => { const v = e.target.value.trim(); setRequest(r => ({ ...r, timeIndex: v === '' ? undefined : Number(v) })) }} />
               </label>
               <label className="flex items-center justify-between"><span className="text-[10px] text-zinc-500">윤달 보정</span><input type="checkbox" checked={request.fixLeap ?? true} onChange={e => setRequest(r => ({ ...r, fixLeap: e.target.checked }))} /></label>
               {request.calendar === 'lunar' && <label className="flex items-center justify-between"><span className="text-[10px] text-zinc-500">윤달 여부</span><input type="checkbox" checked={request.isLeapMonth ?? false} onChange={e => setRequest(r => ({ ...r, isLeapMonth: e.target.checked }))} /></label>}
               <div className="grid grid-cols-2 gap-1.5">
                 <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">운한 날짜</span>
-                  <input className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1 text-xs outline-none focus:border-violet-500/40" value={request.flowDate ?? ''} placeholder="2026-2-13" onChange={e => setRequest(r => ({ ...r, flowDate: e.target.value }))} />
+                  <input className={INPUT_CLS} value={request.flowDate ?? ''} placeholder="2026-2-13" onChange={e => setRequest(r => ({ ...r, flowDate: e.target.value }))} />
                 </label>
                 <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">운한 시간</span>
-                  <input className="rounded-md border border-zinc-800/50 bg-zinc-950/40 px-2 py-1 text-xs outline-none focus:border-violet-500/40" value={request.flowTime ?? '00:00'} placeholder="09:30" onChange={e => setRequest(r => ({ ...r, flowTime: e.target.value, flowTimeIndex: undefined }))} />
+                  <input className={INPUT_CLS} value={request.flowTime ?? '00:00'} placeholder="09:30" onChange={e => setRequest(r => ({ ...r, flowTime: e.target.value, flowTimeIndex: undefined }))} />
                 </label>
               </div>
             </div>
