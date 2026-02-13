@@ -98,7 +98,7 @@ function mutagenColor(m: string): string {
 }
 
 function palaceCellClass(active: boolean, isTrine: boolean, isOpposite: boolean, ming: boolean): string {
-  const base = 'relative flex cursor-pointer flex-col overflow-y-auto rounded-lg border px-3 py-2 text-left transition-all'
+  const base = 'relative flex cursor-pointer flex-col overflow-y-auto rounded border lg:rounded-lg px-1.5 py-1 lg:px-3 lg:py-2 text-left transition-all'
   if (active) return `${base} border-violet-500/60 bg-violet-950/40 shadow-[0_0_16px_rgba(139,92,246,0.15)]`
   if (isTrine) return `${base} border-sky-500/40 bg-sky-950/15 hover:border-sky-400/60 hover:bg-sky-950/25`
   if (isOpposite) return `${base} border-orange-500/40 bg-orange-950/12 hover:border-orange-400/60 hover:bg-orange-950/20`
@@ -226,6 +226,8 @@ function App() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [copyStatus, setCopyStatus] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<'stars' | 'horoscope' | 'flies'>('stars')
+  const [view, setView] = useState<'chart' | 'saju'>('chart')
+  const [showMobileInput, setShowMobileInput] = useState(false)
   const chartRef = useRef<HTMLDivElement | null>(null)
 
   const palaces: Palace[] = result?.palaces ?? []
@@ -324,226 +326,357 @@ function App() {
 
   const isMingGong = (p: Palace) => p.name === '\uba85\uad81' || p.name === '\u547d\u5bab'
 
+  /* ---------- Input form (shared) ---------- */
+  const inputForm = (
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-2 gap-1.5">
+        {(['solar', 'lunar'] as const).map((c) => (
+          <button key={c} type="button"
+            className={`cursor-pointer rounded-md border px-2 py-1.5 text-xs transition-colors ${request.calendar === c ? 'border-violet-500/40 bg-violet-500/10 text-zinc-100' : 'border-zinc-800/50 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
+            onClick={() => setRequest(r => ({ ...r, calendar: c }))}
+          >{c === 'solar' ? '양력' : '음력'}</button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">날짜</span>
+          <input className={INPUT_CLS} value={request.date} placeholder="2000-8-16" onChange={e => setRequest(r => ({ ...r, date: e.target.value }))} /></label>
+        <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">시간</span>
+          <input className={INPUT_CLS} value={request.time ?? '12:00'} placeholder="13:05" onChange={e => setRequest(r => ({ ...r, time: e.target.value, timeIndex: undefined }))} /></label>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">성별</span>
+          <select className={`${INPUT_CLS} hover:border-zinc-700`} value={request.gender} onChange={e => setRequest(r => ({ ...r, gender: e.target.value }))}>
+            <option value="남">남</option><option value="여">여</option></select></label>
+        <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">언어</span>
+          <select className={`${INPUT_CLS} hover:border-zinc-700`} value={request.language ?? 'ko-KR'} onChange={e => setRequest(r => ({ ...r, language: e.target.value }))}>
+            <option value="ko-KR">한국어</option><option value="zh-CN">简中</option><option value="zh-TW">繁中</option><option value="en-US">EN</option><option value="ja-JP">JP</option></select></label>
+      </div>
+      <button type="button" className="cursor-pointer text-[11px] text-zinc-600 transition-colors hover:text-zinc-400" onClick={() => setShowAdvanced(v => !v)}>
+        {showAdvanced ? '고급 설정 접기' : '고급 설정'}</button>
+      {showAdvanced && (
+        <div className="space-y-2 rounded-md border border-zinc-800/30 bg-zinc-950/20 p-2.5">
+          <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">시간 인덱스 (0~12)</span>
+            <input className={INPUT_CLS} inputMode="numeric" value={request.timeIndex ?? ''} placeholder="자동" onChange={e => { const v = e.target.value.trim(); setRequest(r => ({ ...r, timeIndex: v === '' ? undefined : Number(v) })) }} /></label>
+          <label className="flex items-center justify-between"><span className="text-[10px] text-zinc-500">윤달 보정</span><input type="checkbox" checked={request.fixLeap ?? true} onChange={e => setRequest(r => ({ ...r, fixLeap: e.target.checked }))} /></label>
+          {request.calendar === 'lunar' && <label className="flex items-center justify-between"><span className="text-[10px] text-zinc-500">윤달 여부</span><input type="checkbox" checked={request.isLeapMonth ?? false} onChange={e => setRequest(r => ({ ...r, isLeapMonth: e.target.checked }))} /></label>}
+          <div className="grid grid-cols-2 gap-1.5">
+            <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">운한 날짜</span>
+              <input className={INPUT_CLS} value={request.flowDate ?? ''} placeholder="2026-2-13" onChange={e => setRequest(r => ({ ...r, flowDate: e.target.value }))} /></label>
+            <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">운한 시간</span>
+              <input className={INPUT_CLS} value={request.flowTime ?? '00:00'} placeholder="09:30" onChange={e => setRequest(r => ({ ...r, flowTime: e.target.value, flowTimeIndex: undefined }))} /></label>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  /* ---------- Detail tabs (shared) ---------- */
+  const detailTabs = (
+    <div>
+      <div className="mb-3 flex gap-1">
+        {([['stars', '궁 상세'], ['horoscope', '운한'], ['flies', '비성사화']] as const).map(([k, l]) => (
+          <button key={k} type="button"
+            className={`cursor-pointer rounded-md px-2.5 py-1 text-xs transition-colors ${detailTab === k ? 'bg-violet-500/15 text-violet-300' : 'text-zinc-600 hover:bg-zinc-800/30 hover:text-zinc-400'}`}
+            onClick={() => setDetailTab(k)}>{l}</button>
+        ))}
+      </div>
+
+      {detailTab === 'stars' && selectedPalace && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`text-lg font-bold ${palaceNameColor(selectedPalace.name)}`}>{selectedPalace.name}</span>
+              {selectedPalace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1.5 py-0.5 text-xs font-bold text-sky-300">신궁</span>}
+            </div>
+            <span className="text-sm text-zinc-400">{selectedPalace.heavenlyStem}{selectedPalace.earthlyBranch}</span>
+          </div>
+          <div>
+            <div className="mb-1 text-sm font-semibold text-zinc-300">주성</div>
+            {selectedPalace.majorStars.length ? selectedPalace.majorStars.map((s, i) => (
+              <div key={i} className="flex items-baseline gap-1.5 py-0.5">
+                <span className="text-base font-bold text-white">{s.name}</span>
+                {fmtBright(s.brightness) && <span className="text-sm text-zinc-300">({fmtBright(s.brightness)})</span>}
+                {s.mutagen && <span className={`text-sm font-bold ${mutagenColor(s.mutagen)}`}>{s.mutagen}</span>}
+              </div>
+            )) : <span className="text-sm text-zinc-600">-</span>}
+          </div>
+          <div>
+            <div className="mb-1 text-sm font-semibold text-zinc-300"><span className="text-cyan-400">길성</span> / <span className="text-rose-400">살성</span></div>
+            <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+              {selectedPalace.minorStars.length ? selectedPalace.minorStars.map((s, i) => (
+                <span key={i} className={`text-sm ${minorColor(s.type)}`}>
+                  {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
+                  {s.mutagen ? <span className={`font-bold ${mutagenColor(s.mutagen)}`}> {s.mutagen}</span> : null}
+                </span>
+              )) : <span className="text-sm text-zinc-600">-</span>}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 text-sm font-semibold text-zinc-300">잡성</div>
+            <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+              {selectedPalace.adjectiveStars.length ? selectedPalace.adjectiveStars.map((s, i) => (
+                <span key={i} className={`text-sm font-medium ${adjColor(s.type)}`}>{s.name}</span>
+              )) : <span className="text-sm text-zinc-600">-</span>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+            <div><span className="text-zinc-400">장생12</span> <span className="text-zinc-200">{selectedPalace.changsheng12 || '-'}</span></div>
+            <div><span className="text-zinc-400">박사12</span> <span className="text-zinc-200">{selectedPalace.boshi12 || '-'}</span></div>
+            <div><span className="text-zinc-400">장전12</span> <span className="text-zinc-200">{selectedPalace.jiangqian12 || '-'}</span></div>
+            <div><span className="text-zinc-400">태세12</span> <span className="text-zinc-200">{selectedPalace.suiqian12 || '-'}</span></div>
+            <div><span className="text-zinc-400">대한</span> <span className="text-zinc-100">{selectedPalace.stage ? `${selectedPalace.stage.from}~${selectedPalace.stage.to}세` : '-'}</span></div>
+            <div><span className="text-zinc-400">소한</span> <span className="text-zinc-100">{selectedPalace.ages?.length ? selectedPalace.ages.join(', ') + '세' : '-'}</span></div>
+          </div>
+          {selectedSurrounded && (
+            <div>
+              <div className="mb-1 text-xs font-semibold text-zinc-400">삼방사정</div>
+              <div className="text-xs text-zinc-200">
+                삼합: {palaces[selectedSurrounded.trine[0]]?.name ?? '-'}, {palaces[selectedSurrounded.trine[1]]?.name ?? '-'}
+                <span className="ml-3 text-zinc-500">대궁: {palaces[selectedSurrounded.opposite]?.name ?? '-'}</span>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-1.5 pt-2">
+            <button type="button" className="cursor-pointer rounded-md border border-zinc-700/50 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200" onClick={() => copyText(buildPalaceText(selectedPalace, palaces, surrounded, selectedIndex))}>이 궁 복사</button>
+            <button type="button" className="cursor-pointer rounded-md border border-zinc-700/50 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200" onClick={() => result && copyText(buildFullText(result, selectedIndex))} disabled={!result}>전체 복사</button>
+          </div>
+        </div>
+      )}
+      {detailTab === 'stars' && !selectedPalace && <div className="text-sm text-zinc-600">궁을 선택하세요</div>}
+
+      {detailTab === 'horoscope' && (
+        <div className="space-y-2">
+          {result?.horoscope ? ([
+            ['\ub300\ud55c', result.horoscope.decadal], ['\uc720\ub144', result.horoscope.yearly],
+            ['\uc720\uc6d4', result.horoscope.monthly], ['\uc720\uc77c', result.horoscope.daily], ['\uc720\uc2dc', result.horoscope.hourly],
+          ] as [string, HScope][]).map(([label, scope]) => scope && (
+            <div key={label} className="rounded-lg border border-zinc-800/30 bg-zinc-950/20 p-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm font-bold text-zinc-100">{label}</span>
+                <span className="text-sm text-zinc-300">{scope.heavenlyStem}{scope.earthlyBranch}</span>
+                <span className="text-sm text-zinc-400">{scope.name}</span>
+              </div>
+              {scope.mutagen.length > 0 && <div className="mt-1 text-sm text-amber-400">사화: {scope.mutagen.join(', ')}</div>}
+              {scope.palaceNames.length > 0 && <div className="mt-1 text-sm text-zinc-400">궁: {scope.palaceNames.join(', ')}</div>}
+            </div>
+          )) : <div className="text-sm text-zinc-600">운한 데이터 없음</div>}
+        </div>
+      )}
+
+      {detailTab === 'flies' && (
+        result?.flies?.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr><th className="pb-2 text-left font-semibold text-zinc-300">궁</th><th className="pb-2 text-center font-bold text-green-400">록</th><th className="pb-2 text-center font-bold text-green-400">권</th><th className="pb-2 text-center font-bold text-green-400">과</th><th className="pb-2 text-center font-bold text-red-400">기</th></tr></thead>
+              <tbody>
+                {result.flies.map((f, i) => (
+                  <tr key={i} className={`border-t border-zinc-800/20 transition-colors hover:bg-zinc-800/15 ${i === selectedIndex ? 'bg-violet-500/8' : ''}`}>
+                    <td className={`py-1.5 font-medium ${palaceNameColor(f.fromPalace)}`}>{f.fromPalace}</td>
+                    {f.routes.map((r, ri) => <td key={ri} className={`py-1.5 text-center font-medium ${r.to != null ? (ri < 3 ? 'text-green-300' : 'text-red-300') : 'text-zinc-800'}`}>{r.toPalace || '-'}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <div className="text-sm text-zinc-600">비성사화 데이터 없음</div>
+      )}
+    </div>
+  )
+
   /* ---------- Render ---------- */
   return (
-    <div className="flex h-dvh overflow-hidden text-zinc-100" style={{ background: 'linear-gradient(135deg, #080818 0%, #0a0a14 50%, #060612 100%)' }}>
+    <div className="flex h-dvh flex-col lg:flex-row overflow-hidden text-zinc-100" style={{ background: 'linear-gradient(135deg, #080818 0%, #0a0a14 50%, #060612 100%)' }}>
 
-      {/* ========== LEFT: Chart ========== */}
+      {/* ========== MAIN AREA ========== */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex flex-shrink-0 items-center justify-between border-b border-zinc-800/30 px-5 py-2">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-base font-bold tracking-tight">자미두수 명반</h1>
-            {busy && <span className="text-[10px] text-zinc-500">계산 중...</span>}
+        <header className="flex flex-shrink-0 items-center justify-between border-b border-zinc-800/30 px-3 lg:px-5 py-2 gap-2">
+          <div className="flex items-center gap-2 lg:gap-3">
+            <h1 className="text-sm lg:text-base font-bold tracking-tight whitespace-nowrap">자미두수</h1>
+            <div className="flex rounded-lg bg-zinc-900/60 p-0.5">
+              {([['chart', '명반'], ['saju', '만세력']] as const).map(([v, label]) => (
+                <button key={v} type="button"
+                  className={`cursor-pointer rounded-md px-2 lg:px-3 py-1 text-xs font-medium transition-colors ${view === v ? 'bg-violet-500/20 text-violet-300' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  onClick={() => setView(v)}>{label}</button>
+              ))}
+            </div>
+            {busy && <span className="hidden sm:inline text-[10px] text-zinc-500">계산 중...</span>}
             {copyStatus && <span className="text-[10px] text-emerald-400">{copyStatus}</span>}
           </div>
-          <div className="flex gap-1.5">
-            {(['텍스트 복사', '이미지 저장', 'PDF 저장'] as const).map((label) => (
-              <button
-                key={label}
-                type="button"
-                className="cursor-pointer rounded-md border border-zinc-800/50 bg-zinc-900/30 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:bg-zinc-800/40 hover:text-zinc-200 disabled:cursor-default disabled:opacity-30"
-                disabled={!result}
-                onClick={() => {
-                  if (label === '텍스트 복사' && result) copyText(buildFullText(result, selectedIndex))
-                  if (label === '이미지 저장') downloadPng()
-                  if (label === 'PDF 저장') downloadPdf()
-                }}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="flex items-center gap-1 lg:gap-1.5">
+            <button type="button" className="lg:hidden cursor-pointer rounded-md border border-zinc-800/50 bg-zinc-900/30 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200" onClick={() => setShowMobileInput(v => !v)}>
+              {showMobileInput ? '접기' : '입력'}</button>
+            <div className="hidden sm:flex gap-1.5">
+              {(['텍스트 복사', '이미지 저장', 'PDF 저장'] as const).map((label) => (
+                <button key={label} type="button"
+                  className="cursor-pointer rounded-md border border-zinc-800/50 bg-zinc-900/30 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:bg-zinc-800/40 hover:text-zinc-200 disabled:cursor-default disabled:opacity-30"
+                  disabled={!result}
+                  onClick={() => {
+                    if (label === '텍스트 복사' && result) copyText(buildFullText(result, selectedIndex))
+                    if (label === '이미지 저장') downloadPng()
+                    if (label === 'PDF 저장') downloadPdf()
+                  }}>{label}</button>
+              ))}
+            </div>
           </div>
         </header>
 
+        {/* Mobile input (collapsible) */}
+        {showMobileInput && <div className="lg:hidden border-b border-zinc-800/30 p-3">{inputForm}</div>}
+
         {workerError && (
-          <div className="mx-5 mt-3 rounded-lg border border-red-900/30 bg-red-950/15 px-3 py-2 text-xs text-red-400">
+          <div className="mx-3 lg:mx-5 mt-2 rounded-lg border border-red-900/30 bg-red-950/15 px-3 py-2 text-xs text-red-400">
             초기화 실패. 새로고침해 주세요.
           </div>
         )}
 
-        {/* 4x4 Grid */}
-        <div ref={chartRef} className="min-h-0 flex-1 px-4 py-4">
-          <div className="grid h-full grid-cols-4 grid-rows-4 gap-1.5">
-            {GRID_POS.map((pos, idx) => {
-              const palace = palaces[idx]
-              if (!palace) return <div key={idx} style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }} />
-              const active = idx === selectedIndex
-              const ming = isMingGong(palace)
-              // 삼방사정 highlight
-              const selSu = surrounded?.[selectedIndex]
-              const isTrine = selSu?.trine.includes(idx) ?? false
-              const isOpposite = selSu?.opposite === idx
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  className={palaceCellClass(active, isTrine, isOpposite, ming)}
-                  style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }}
-                  onClick={() => setSelectedIndex(idx)}
-                >
-                  {/* Header: name + badges | 간지 right */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <span className={`text-base font-bold ${palaceNameColor(palace.name)}`}>
-                        {palace.name}
-                      </span>
-                      {palace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1 py-px text-[11px] font-bold text-sky-300">신</span>}
-                      {isTrine && !active && <span className="rounded bg-sky-500/20 px-1 py-px text-[11px] font-bold text-sky-400">삼</span>}
-                      {isOpposite && !active && <span className="rounded bg-orange-500/20 px-1 py-px text-[11px] font-bold text-orange-400">대</span>}
-                    </div>
-                    <span className="text-xs text-zinc-400">{palace.heavenlyStem}{palace.earthlyBranch}</span>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto">
+          {view === 'chart' ? (
+            <>
+              {/* 4x4 Grid */}
+              <div ref={chartRef} className="p-2 lg:p-4" style={{ minHeight: 'min(85vw, 600px)' }}>
+                <div className="grid h-full grid-cols-4 grid-rows-4 gap-0.5 sm:gap-1 lg:gap-1.5" style={{ minHeight: 'inherit' }}>
+                  {GRID_POS.map((pos, idx) => {
+                    const palace = palaces[idx]
+                    if (!palace) return <div key={idx} style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }} />
+                    const active = idx === selectedIndex
+                    const ming = isMingGong(palace)
+                    const selSu = surrounded?.[selectedIndex]
+                    const isTrine = selSu?.trine.includes(idx) ?? false
+                    const isOpposite = selSu?.opposite === idx
+                    return (
+                      <button key={idx} type="button"
+                        className={palaceCellClass(active, isTrine, isOpposite, ming)}
+                        style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }}
+                        onClick={() => setSelectedIndex(idx)}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-0.5 lg:gap-1">
+                            <span className={`text-xs sm:text-sm lg:text-base font-bold ${palaceNameColor(palace.name)}`}>{palace.name}</span>
+                            {palace.isBodyPalace && <span className="rounded bg-sky-500/25 px-0.5 lg:px-1 py-px text-[8px] lg:text-[11px] font-bold text-sky-300">신</span>}
+                            {isTrine && !active && <span className="hidden sm:inline rounded bg-sky-500/20 px-0.5 py-px text-[8px] lg:text-[11px] font-bold text-sky-400">삼</span>}
+                            {isOpposite && !active && <span className="hidden sm:inline rounded bg-orange-500/20 px-0.5 py-px text-[8px] lg:text-[11px] font-bold text-orange-400">대</span>}
+                          </div>
+                          <span className="text-[9px] lg:text-xs text-zinc-400">{palace.heavenlyStem}{palace.earthlyBranch}</span>
+                        </div>
+                        <div className="mt-0.5 lg:mt-1.5 space-y-0.5">
+                          {palace.majorStars.map((s, si) => (
+                            <div key={si} className="flex items-baseline gap-0.5 lg:gap-1">
+                              <span className="text-xs sm:text-sm lg:text-base font-bold text-white">{s.name}</span>
+                              {fmtBright(s.brightness) && <span className="text-[9px] lg:text-xs text-zinc-300">{fmtBright(s.brightness)}</span>}
+                              {s.mutagen && <span className={`text-[9px] lg:text-sm font-bold ${mutagenColor(s.mutagen)}`}>{s.mutagen}</span>}
+                            </div>
+                          ))}
+                        </div>
+                        {palace.minorStars.length > 0 && (
+                          <div className="mt-0.5 lg:mt-1.5 flex flex-wrap gap-x-1 lg:gap-x-1.5 gap-y-0">
+                            {palace.minorStars.map((s, si) => (
+                              <span key={si} className={`text-[9px] lg:text-xs ${minorColor(s.type)}`}>
+                                {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
+                                {s.mutagen ? <span className={`font-bold ${mutagenColor(s.mutagen)}`}> {s.mutagen}</span> : null}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {palace.adjectiveStars.length > 0 && (
+                          <div className="mt-0.5 lg:mt-1.5 flex flex-wrap gap-x-1 lg:gap-x-1.5 gap-y-0">
+                            {palace.adjectiveStars.map((s, si) => (
+                              <span key={si} className={`text-[9px] lg:text-xs font-medium ${adjColor(s.type)}`}>{s.name}</span>
+                            ))}
+                          </div>
+                        )}
+                        {(palace.changsheng12 || palace.boshi12) && (
+                          <div className="mt-0.5 lg:mt-1 flex flex-wrap gap-x-1 lg:gap-x-2 text-[8px] lg:text-[11px] text-zinc-300">
+                            {palace.changsheng12 && <span><span className="text-zinc-500">장</span>{palace.changsheng12}</span>}
+                            {palace.boshi12 && <span><span className="text-zinc-500">박</span>{palace.boshi12}</span>}
+                            <span className="hidden sm:inline">{palace.jiangqian12 && <><span className="text-zinc-500">전</span>{palace.jiangqian12}</>}</span>
+                            <span className="hidden sm:inline">{palace.suiqian12 && <><span className="text-zinc-500">세</span>{palace.suiqian12}</>}</span>
+                          </div>
+                        )}
+                        {palace.stage && (
+                          <div className="mt-auto pt-0.5 text-right text-[9px] lg:text-xs text-zinc-400">
+                            {palace.stage.from}-{palace.stage.to}세
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+
+                  {/* Center 2x2 */}
+                  <div className="col-start-2 col-end-4 row-start-2 row-end-4 flex flex-col items-center justify-center gap-1 lg:gap-3 rounded lg:rounded-lg border border-zinc-800/15 bg-zinc-950/25 p-2 lg:p-4">
+                    {result ? (
+                      <>
+                        <div className="text-center">
+                          <div className="text-xs sm:text-sm lg:text-lg font-bold text-zinc-100">자미두수 명반</div>
+                          <div className="mt-0.5 text-[10px] lg:text-sm text-zinc-400">{result.solarDate} ({result.lunarDate})</div>
+                          <div className="text-[10px] lg:text-sm text-zinc-400">{result.time} ({result.timeRange})</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-3 lg:gap-x-6 gap-y-0.5 lg:gap-y-1.5 text-[10px] lg:text-sm">
+                          <div><span className="text-zinc-400">명주</span> <span className="font-bold text-violet-300">{result.soul}</span></div>
+                          <div><span className="text-zinc-400">신주</span> <span className="font-bold text-sky-300">{result.body}</span></div>
+                          <div className="col-span-2 text-center"><span className="text-zinc-400">오행국</span> <span className="font-bold text-amber-300">{result.fiveElementsClass}</span></div>
+                        </div>
+                        {result.saju && (
+                          <div className="hidden md:flex gap-3">
+                            <PillarBox label="시주" pillar={result.saju.hour} />
+                            <PillarBox label="일주" pillar={result.saju.day} />
+                            <PillarBox label="월주" pillar={result.saju.month} />
+                            <PillarBox label="년주" pillar={result.saju.year} />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-xs lg:text-sm text-zinc-700">명반을 생성하세요</div>
+                    )}
                   </div>
+                </div>
+              </div>
 
-                  {/* Major stars */}
-                  <div className="mt-1.5 space-y-0.5">
-                    {palace.majorStars.map((s, si) => (
-                      <div key={si} className="flex items-baseline gap-1">
-                        <span className="text-base font-bold text-white">{s.name}</span>
-                        {fmtBright(s.brightness) && <span className="text-xs text-zinc-300">{fmtBright(s.brightness)}</span>}
-                        {s.mutagen && <span className={`text-sm font-bold ${mutagenColor(s.mutagen)}`}>{s.mutagen}</span>}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Minor stars - colored by type */}
-                  {palace.minorStars.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
-                      {palace.minorStars.map((s, si) => (
-                        <span key={si} className={`text-xs ${minorColor(s.type)}`}>
-                          {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
-                          {s.mutagen ? <span className={`font-bold ${mutagenColor(s.mutagen)}`}> {s.mutagen}</span> : null}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Adjective stars (잡성) */}
-                  {palace.adjectiveStars.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
-                      {palace.adjectiveStars.map((s, si) => (
-                        <span key={si} className={`text-xs font-medium ${adjColor(s.type)}`}>{s.name}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 12신 */}
-                  {(palace.changsheng12 || palace.boshi12) && (
-                    <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-zinc-300">
-                      {palace.changsheng12 && <span><span className="text-zinc-500">장</span>{palace.changsheng12}</span>}
-                      {palace.boshi12 && <span><span className="text-zinc-500">박</span>{palace.boshi12}</span>}
-                      {palace.jiangqian12 && <span><span className="text-zinc-500">전</span>{palace.jiangqian12}</span>}
-                      {palace.suiqian12 && <span><span className="text-zinc-500">세</span>{palace.suiqian12}</span>}
-                    </div>
-                  )}
-
-                  {/* Stage */}
-                  {palace.stage && (
-                    <div className="mt-auto pt-0.5 text-right text-xs text-zinc-400">
-                      {palace.stage.from}-{palace.stage.to}세
-                    </div>
-                  )}
-                </button>
-              )
-            })}
-
-            {/* Center 2x2 - Chart info */}
-            <div className="col-start-2 col-end-4 row-start-2 row-end-4 flex flex-col items-center justify-center gap-3 rounded-lg border border-zinc-800/15 bg-zinc-950/25 p-4">
-              {result ? (
+              {/* Mobile: detail tabs below grid */}
+              <div className="lg:hidden p-3 border-t border-zinc-800/30">{detailTabs}</div>
+            </>
+          ) : (
+            /* ========== 만세력 VIEW ========== */
+            <div className="p-4 lg:p-6 space-y-6">
+              {result?.saju ? (
                 <>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-zinc-100">자미두수 명반</div>
+                    <div className="text-lg font-bold text-zinc-100">만세력 사주 <span className="font-normal text-zinc-500">(절기 기반)</span></div>
                     <div className="mt-1 text-sm text-zinc-400">{result.solarDate} ({result.lunarDate})</div>
                     <div className="text-sm text-zinc-400">{result.time} ({result.timeRange})</div>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+
+                  <div className="flex justify-center gap-4 sm:gap-6">
+                    <PillarBox label="시주" pillar={result.saju.hour} />
+                    <PillarBox label="일주" pillar={result.saju.day} />
+                    <PillarBox label="월주" pillar={result.saju.month} />
+                    <PillarBox label="년주" pillar={result.saju.year} />
+                  </div>
+
+                  <div className="mx-auto max-w-sm grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
                     <div><span className="text-zinc-400">명주</span> <span className="font-bold text-violet-300">{result.soul}</span></div>
                     <div><span className="text-zinc-400">신주</span> <span className="font-bold text-sky-300">{result.body}</span></div>
                     <div className="col-span-2 text-center"><span className="text-zinc-400">오행국</span> <span className="font-bold text-amber-300">{result.fiveElementsClass}</span></div>
                   </div>
-                  {result.saju && (
-                    <div className="flex gap-3">
-                      <PillarBox label="시주" pillar={result.saju.hour} />
-                      <PillarBox label="일주" pillar={result.saju.day} />
-                      <PillarBox label="월주" pillar={result.saju.month} />
-                      <PillarBox label="년주" pillar={result.saju.year} />
-                    </div>
-                  )}
                 </>
               ) : (
-                <div className="text-sm text-zinc-700">명반을 생성하세요</div>
+                <div className="text-center text-sm text-zinc-600 py-12">사주 데이터를 생성하세요</div>
               )}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ========== RIGHT: Sidebar ========== */}
-      <aside className="flex w-[360px] flex-shrink-0 flex-col overflow-y-auto border-l border-zinc-800/30 bg-zinc-950/40">
-
-        {/* Input section */}
-        <div className="space-y-2.5 border-b border-zinc-800/30 p-4">
-          <div className="text-xs font-bold text-zinc-300">입력</div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            {(['solar', 'lunar'] as const).map((c) => (
-              <button key={c} type="button"
-                className={`cursor-pointer rounded-md border px-2 py-1.5 text-xs transition-colors ${request.calendar === c ? 'border-violet-500/40 bg-violet-500/10 text-zinc-100' : 'border-zinc-800/50 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
-                onClick={() => setRequest(r => ({ ...r, calendar: c }))}
-              >{c === 'solar' ? '양력' : '음력'}</button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <label className="grid gap-0.5">
-              <span className="text-[10px] text-zinc-500">날짜</span>
-              <input className={INPUT_CLS} value={request.date} placeholder="2000-8-16" onChange={e => setRequest(r => ({ ...r, date: e.target.value }))} />
-            </label>
-            <label className="grid gap-0.5">
-              <span className="text-[10px] text-zinc-500">시간</span>
-              <input className={INPUT_CLS} value={request.time ?? '12:00'} placeholder="13:05" onChange={e => setRequest(r => ({ ...r, time: e.target.value, timeIndex: undefined }))} />
-            </label>
-          </div>
-
-          <div className="grid grid-cols-2 gap-1.5">
-            <label className="grid gap-0.5">
-              <span className="text-[10px] text-zinc-500">성별</span>
-              <select className={`${INPUT_CLS} hover:border-zinc-700`} value={request.gender} onChange={e => setRequest(r => ({ ...r, gender: e.target.value }))}>
-                <option value="남">남</option><option value="여">여</option>
-              </select>
-            </label>
-            <label className="grid gap-0.5">
-              <span className="text-[10px] text-zinc-500">언어</span>
-              <select className={`${INPUT_CLS} hover:border-zinc-700`} value={request.language ?? 'ko-KR'} onChange={e => setRequest(r => ({ ...r, language: e.target.value }))}>
-                <option value="ko-KR">한국어</option><option value="zh-CN">简中</option><option value="zh-TW">繁中</option><option value="en-US">EN</option><option value="ja-JP">JP</option>
-              </select>
-            </label>
-          </div>
-
-          {/* Advanced */}
-          <button type="button" className="cursor-pointer text-[11px] text-zinc-600 transition-colors hover:text-zinc-400" onClick={() => setShowAdvanced(v => !v)}>
-            {showAdvanced ? '고급 설정 접기' : '고급 설정'}
-          </button>
-          {showAdvanced && (
-            <div className="space-y-2 rounded-md border border-zinc-800/30 bg-zinc-950/20 p-2.5">
-              <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">시간 인덱스 (0~12)</span>
-                <input className={INPUT_CLS} inputMode="numeric" value={request.timeIndex ?? ''} placeholder="자동" onChange={e => { const v = e.target.value.trim(); setRequest(r => ({ ...r, timeIndex: v === '' ? undefined : Number(v) })) }} />
-              </label>
-              <label className="flex items-center justify-between"><span className="text-[10px] text-zinc-500">윤달 보정</span><input type="checkbox" checked={request.fixLeap ?? true} onChange={e => setRequest(r => ({ ...r, fixLeap: e.target.checked }))} /></label>
-              {request.calendar === 'lunar' && <label className="flex items-center justify-between"><span className="text-[10px] text-zinc-500">윤달 여부</span><input type="checkbox" checked={request.isLeapMonth ?? false} onChange={e => setRequest(r => ({ ...r, isLeapMonth: e.target.checked }))} /></label>}
-              <div className="grid grid-cols-2 gap-1.5">
-                <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">운한 날짜</span>
-                  <input className={INPUT_CLS} value={request.flowDate ?? ''} placeholder="2026-2-13" onChange={e => setRequest(r => ({ ...r, flowDate: e.target.value }))} />
-                </label>
-                <label className="grid gap-0.5"><span className="text-[10px] text-zinc-500">운한 시간</span>
-                  <input className={INPUT_CLS} value={request.flowTime ?? '00:00'} placeholder="09:30" onChange={e => setRequest(r => ({ ...r, flowTime: e.target.value, flowTimeIndex: undefined }))} />
-                </label>
-              </div>
+              {/* Detail tabs in saju view */}
+              <div className="border-t border-zinc-800/30 pt-4">{detailTabs}</div>
             </div>
           )}
         </div>
+      </div>
 
-        {/* 만세력 사주 */}
+      {/* ========== DESKTOP SIDEBAR ========== */}
+      <aside className="hidden lg:flex w-[360px] flex-shrink-0 flex-col overflow-y-auto border-l border-zinc-800/30 bg-zinc-950/40">
+        <div className="border-b border-zinc-800/30 p-4">
+          <div className="mb-2 text-xs font-bold text-zinc-300">입력</div>
+          {inputForm}
+        </div>
+
         {result?.saju && (
           <div className="border-b border-zinc-800/30 p-4">
             <div className="mb-2 text-xs font-bold text-zinc-300">만세력 사주 <span className="font-normal text-zinc-600">(절기 기반)</span></div>
@@ -563,135 +696,7 @@ function App() {
           </div>
         )}
 
-        {/* Detail tabs */}
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="mb-3 flex gap-1">
-            {([['stars', '궁 상세'], ['horoscope', '운한'], ['flies', '비성사화']] as const).map(([k, l]) => (
-              <button key={k} type="button"
-                className={`cursor-pointer rounded-md px-2.5 py-1 text-xs transition-colors ${detailTab === k ? 'bg-violet-500/15 text-violet-300' : 'text-zinc-600 hover:bg-zinc-800/30 hover:text-zinc-400'}`}
-                onClick={() => setDetailTab(k)}>{l}</button>
-            ))}
-          </div>
-
-          {/* Stars */}
-          {detailTab === 'stars' && selectedPalace && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`text-lg font-bold ${palaceNameColor(selectedPalace.name)}`}>{selectedPalace.name}</span>
-                  {selectedPalace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1.5 py-0.5 text-xs font-bold text-sky-300">신궁</span>}
-                </div>
-                <span className="text-sm text-zinc-400">{selectedPalace.heavenlyStem}{selectedPalace.earthlyBranch}</span>
-              </div>
-
-              {/* 주성 */}
-              <div>
-                <div className="mb-1 text-sm font-semibold text-zinc-300">주성</div>
-                {selectedPalace.majorStars.length ? selectedPalace.majorStars.map((s, i) => (
-                  <div key={i} className="flex items-baseline gap-1.5 py-0.5">
-                    <span className="text-base font-bold text-white">{s.name}</span>
-                    {fmtBright(s.brightness) && <span className="text-sm text-zinc-300">({fmtBright(s.brightness)})</span>}
-                    {s.mutagen && <span className={`text-sm font-bold ${mutagenColor(s.mutagen)}`}>{s.mutagen}</span>}
-                  </div>
-                )) : <span className="text-sm text-zinc-600">-</span>}
-              </div>
-
-              {/* 보성/살성 - 색상 구분 */}
-              <div>
-                <div className="mb-1 text-sm font-semibold text-zinc-300">
-                  <span className="text-cyan-400">길성</span> / <span className="text-rose-400">살성</span>
-                </div>
-                <div className="flex flex-wrap gap-x-2.5 gap-y-1">
-                  {selectedPalace.minorStars.length ? selectedPalace.minorStars.map((s, i) => (
-                    <span key={i} className={`text-sm ${minorColor(s.type)}`}>
-                      {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
-                      {s.mutagen ? <span className={`font-bold ${mutagenColor(s.mutagen)}`}> {s.mutagen}</span> : null}
-                    </span>
-                  )) : <span className="text-sm text-zinc-600">-</span>}
-                </div>
-              </div>
-
-              {/* 잡성 - type 별 색 */}
-              <div>
-                <div className="mb-1 text-sm font-semibold text-zinc-300">잡성</div>
-                <div className="flex flex-wrap gap-x-2.5 gap-y-1">
-                  {selectedPalace.adjectiveStars.length ? selectedPalace.adjectiveStars.map((s, i) => (
-                    <span key={i} className={`text-sm font-medium ${adjColor(s.type)}`}>{s.name}</span>
-                  )) : <span className="text-sm text-zinc-600">-</span>}
-                </div>
-              </div>
-
-              {/* 12신 / 대한 */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                <div><span className="text-zinc-400">장생12</span> <span className="text-zinc-200">{selectedPalace.changsheng12 || '-'}</span></div>
-                <div><span className="text-zinc-400">박사12</span> <span className="text-zinc-200">{selectedPalace.boshi12 || '-'}</span></div>
-                <div><span className="text-zinc-400">장전12</span> <span className="text-zinc-200">{selectedPalace.jiangqian12 || '-'}</span></div>
-                <div><span className="text-zinc-400">태세12</span> <span className="text-zinc-200">{selectedPalace.suiqian12 || '-'}</span></div>
-                <div><span className="text-zinc-400">대한</span> <span className="text-zinc-100">{selectedPalace.stage ? `${selectedPalace.stage.from}~${selectedPalace.stage.to}세` : '-'}</span></div>
-                <div><span className="text-zinc-400">소한</span> <span className="text-zinc-100">{selectedPalace.ages?.length ? selectedPalace.ages.join(', ') + '세' : '-'}</span></div>
-              </div>
-
-              {/* 삼방사정 */}
-              {selectedSurrounded && (
-                <div>
-                  <div className="mb-1 text-xs font-semibold text-zinc-400">삼방사정</div>
-                  <div className="text-xs text-zinc-200">
-                    삼합: {palaces[selectedSurrounded.trine[0]]?.name ?? '-'}, {palaces[selectedSurrounded.trine[1]]?.name ?? '-'}
-                    <span className="ml-3 text-zinc-500">대궁: {palaces[selectedSurrounded.opposite]?.name ?? '-'}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex gap-1.5 pt-2">
-                <button type="button" className="cursor-pointer rounded-md border border-zinc-700/50 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200" onClick={() => copyText(buildPalaceText(selectedPalace, palaces, surrounded, selectedIndex))}>이 궁 복사</button>
-                <button type="button" className="cursor-pointer rounded-md border border-zinc-700/50 px-2.5 py-1 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200" onClick={() => result && copyText(buildFullText(result, selectedIndex))} disabled={!result}>전체 복사</button>
-              </div>
-            </div>
-          )}
-          {detailTab === 'stars' && !selectedPalace && <div className="text-sm text-zinc-600">궁을 선택하세요</div>}
-
-          {/* Horoscope */}
-          {detailTab === 'horoscope' && (
-            <div className="space-y-2">
-              {result?.horoscope ? ([
-                ['\ub300\ud55c', result.horoscope.decadal],
-                ['\uc720\ub144', result.horoscope.yearly],
-                ['\uc720\uc6d4', result.horoscope.monthly],
-                ['\uc720\uc77c', result.horoscope.daily],
-                ['\uc720\uc2dc', result.horoscope.hourly],
-              ] as [string, HScope][]).map(([label, scope]) => scope && (
-                <div key={label} className="rounded-lg border border-zinc-800/30 bg-zinc-950/20 p-3">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-bold text-zinc-100">{label}</span>
-                    <span className="text-sm text-zinc-300">{scope.heavenlyStem}{scope.earthlyBranch}</span>
-                    <span className="text-sm text-zinc-400">{scope.name}</span>
-                  </div>
-                  {scope.mutagen.length > 0 && <div className="mt-1 text-sm text-amber-400">사화: {scope.mutagen.join(', ')}</div>}
-                  {scope.palaceNames.length > 0 && <div className="mt-1 text-sm text-zinc-400">궁: {scope.palaceNames.join(', ')}</div>}
-                </div>
-              )) : <div className="text-sm text-zinc-600">운한 데이터 없음</div>}
-            </div>
-          )}
-
-          {/* Flies */}
-          {detailTab === 'flies' && (
-            result?.flies?.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr><th className="pb-2 text-left font-semibold text-zinc-300">궁</th><th className="pb-2 text-center font-bold text-green-400">록</th><th className="pb-2 text-center font-bold text-green-400">권</th><th className="pb-2 text-center font-bold text-green-400">과</th><th className="pb-2 text-center font-bold text-red-400">기</th></tr></thead>
-                  <tbody>
-                    {result.flies.map((f, i) => (
-                      <tr key={i} className={`border-t border-zinc-800/20 transition-colors hover:bg-zinc-800/15 ${i === selectedIndex ? 'bg-violet-500/8' : ''}`}>
-                        <td className={`py-1.5 font-medium ${palaceNameColor(f.fromPalace)}`}>{f.fromPalace}</td>
-                        {f.routes.map((r, ri) => <td key={ri} className={`py-1.5 text-center font-medium ${r.to != null ? (ri < 3 ? 'text-green-300' : 'text-red-300') : 'text-zinc-800'}`}>{r.toPalace || '-'}</td>)}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <div className="text-sm text-zinc-600">비성사화 데이터 없음</div>
-          )}
-        </div>
+        <div className="flex-1 overflow-y-auto p-4">{detailTabs}</div>
       </aside>
     </div>
   )
