@@ -63,17 +63,38 @@ function minorColor(type: string): string {
     case 'lucun': return 'text-emerald-300'
     case 'helper': return 'text-emerald-400'
     case 'flower': return 'text-pink-400'
-    default: return 'text-zinc-300'
+    default: return 'text-zinc-200'
   }
 }
 function adjColor(type: string): string {
   switch (type) {
-    case 'flower': return 'text-pink-400/80'
-    case 'helper': return 'text-emerald-400/80'
-    case 'tough': return 'text-rose-400/70'
-    case 'soft': return 'text-cyan-300/70'
-    default: return 'text-zinc-400'
+    case 'flower': return 'text-pink-400'
+    case 'helper': return 'text-emerald-400'
+    case 'tough': return 'text-rose-400'
+    case 'soft': return 'text-cyan-300'
+    default: return 'text-zinc-300'
   }
+}
+
+function palaceNameColor(name: string): string {
+  if (/명궁|命宮/.test(name)) return 'text-amber-300'
+  if (/형제|兄弟/.test(name)) return 'text-teal-300'
+  if (/부부|夫妻/.test(name)) return 'text-pink-300'
+  if (/자녀|子女/.test(name)) return 'text-sky-300'
+  if (/재백|財帛/.test(name)) return 'text-emerald-300'
+  if (/질액|疾厄/.test(name)) return 'text-rose-300'
+  if (/천이|遷移/.test(name)) return 'text-violet-300'
+  if (/교우|交友|노복|奴僕/.test(name)) return 'text-teal-400'
+  if (/관록|官祿/.test(name)) return 'text-blue-300'
+  if (/전택|田宅/.test(name)) return 'text-lime-300'
+  if (/복덕|福德/.test(name)) return 'text-cyan-300'
+  if (/부모|父母/.test(name)) return 'text-orange-300'
+  return 'text-zinc-100'
+}
+
+function mutagenColor(m: string): string {
+  if (/기|忌/.test(m)) return 'text-red-400'
+  return 'text-green-400'
 }
 
 function palaceCellClass(active: boolean, isTrine: boolean, isOpposite: boolean, ming: boolean): string {
@@ -342,8 +363,8 @@ function App() {
         )}
 
         {/* 4x4 Grid */}
-        <div ref={chartRef} className="min-h-0 flex-1 px-10 py-8">
-          <div className="grid h-full grid-cols-4 grid-rows-4 gap-2">
+        <div ref={chartRef} className="min-h-0 flex-1 px-4 py-4">
+          <div className="grid h-full grid-cols-4 grid-rows-4 gap-1.5">
             {GRID_POS.map((pos, idx) => {
               const palace = palaces[idx]
               if (!palace) return <div key={idx} style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }} />
@@ -361,36 +382,37 @@ function App() {
                   style={{ gridColumn: pos.col + 1, gridRow: pos.row + 1 }}
                   onClick={() => setSelectedIndex(idx)}
                 >
-                  {/* Header: name + branch + badges */}
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-sm font-bold ${ming ? 'text-amber-300' : active ? 'text-violet-300' : 'text-zinc-100'}`}>
-                      {palace.name}
-                    </span>
-                    <span className="text-[11px] text-zinc-500">{palace.heavenlyStem}{palace.earthlyBranch}</span>
-                    {ming && <span className="rounded bg-amber-500/25 px-1 py-px text-[10px] font-bold text-amber-400">명</span>}
-                    {palace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1 py-px text-[10px] font-bold text-sky-400">신</span>}
-                    {isTrine && !active && <span className="rounded bg-sky-500/20 px-1 py-px text-[10px] font-bold text-sky-400">삼</span>}
-                    {isOpposite && !active && <span className="rounded bg-orange-500/20 px-1 py-px text-[10px] font-bold text-orange-400">대</span>}
+                  {/* Header: name + badges | 간지 right */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className={`text-base font-bold ${palaceNameColor(palace.name)}`}>
+                        {palace.name}
+                      </span>
+                      {palace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1 py-px text-[11px] font-bold text-sky-300">신</span>}
+                      {isTrine && !active && <span className="rounded bg-sky-500/20 px-1 py-px text-[11px] font-bold text-sky-400">삼</span>}
+                      {isOpposite && !active && <span className="rounded bg-orange-500/20 px-1 py-px text-[11px] font-bold text-orange-400">대</span>}
+                    </div>
+                    <span className="text-xs text-zinc-400">{palace.heavenlyStem}{palace.earthlyBranch}</span>
                   </div>
 
                   {/* Major stars */}
-                  <div className="mt-1 space-y-0.5">
+                  <div className="mt-1.5 space-y-0.5">
                     {palace.majorStars.map((s, si) => (
                       <div key={si} className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold text-white">{s.name}</span>
-                        {fmtBright(s.brightness) && <span className="text-[11px] text-zinc-400">{fmtBright(s.brightness)}</span>}
-                        {s.mutagen && <span className="text-[11px] font-bold text-amber-400">{s.mutagen}</span>}
+                        <span className="text-base font-bold text-white">{s.name}</span>
+                        {fmtBright(s.brightness) && <span className="text-xs text-zinc-300">{fmtBright(s.brightness)}</span>}
+                        {s.mutagen && <span className={`text-sm font-bold ${mutagenColor(s.mutagen)}`}>{s.mutagen}</span>}
                       </div>
                     ))}
                   </div>
 
                   {/* Minor stars - colored by type */}
                   {palace.minorStars.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-0.5">
+                    <div className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
                       {palace.minorStars.map((s, si) => (
-                        <span key={si} className={`text-[11px] ${minorColor(s.type)}`}>
+                        <span key={si} className={`text-xs ${minorColor(s.type)}`}>
                           {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
-                          {s.mutagen ? <span className="font-bold text-amber-400"> {s.mutagen}</span> : null}
+                          {s.mutagen ? <span className={`font-bold ${mutagenColor(s.mutagen)}`}> {s.mutagen}</span> : null}
                         </span>
                       ))}
                     </div>
@@ -398,26 +420,26 @@ function App() {
 
                   {/* Adjective stars (잡성) */}
                   {palace.adjectiveStars.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-x-1 gap-y-0.5">
+                    <div className="mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5">
                       {palace.adjectiveStars.map((s, si) => (
-                        <span key={si} className={`text-[10px] ${adjColor(s.type)}`}>{s.name}</span>
+                        <span key={si} className={`text-xs font-medium ${adjColor(s.type)}`}>{s.name}</span>
                       ))}
                     </div>
                   )}
 
                   {/* 12신 */}
                   {(palace.changsheng12 || palace.boshi12) && (
-                    <div className="mt-1 flex flex-wrap gap-x-1.5 text-[9px] text-zinc-500">
-                      {palace.changsheng12 && <span><span className="text-zinc-600">장</span>{palace.changsheng12}</span>}
-                      {palace.boshi12 && <span><span className="text-zinc-600">박</span>{palace.boshi12}</span>}
-                      {palace.jiangqian12 && <span><span className="text-zinc-600">전</span>{palace.jiangqian12}</span>}
-                      {palace.suiqian12 && <span><span className="text-zinc-600">세</span>{palace.suiqian12}</span>}
+                    <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] text-zinc-300">
+                      {palace.changsheng12 && <span><span className="text-zinc-500">장</span>{palace.changsheng12}</span>}
+                      {palace.boshi12 && <span><span className="text-zinc-500">박</span>{palace.boshi12}</span>}
+                      {palace.jiangqian12 && <span><span className="text-zinc-500">전</span>{palace.jiangqian12}</span>}
+                      {palace.suiqian12 && <span><span className="text-zinc-500">세</span>{palace.suiqian12}</span>}
                     </div>
                   )}
 
                   {/* Stage */}
                   {palace.stage && (
-                    <div className="mt-auto pt-0.5 text-right text-[10px] text-zinc-600">
+                    <div className="mt-auto pt-0.5 text-right text-xs text-zinc-400">
                       {palace.stage.from}-{palace.stage.to}세
                     </div>
                   )}
@@ -430,14 +452,14 @@ function App() {
               {result ? (
                 <>
                   <div className="text-center">
-                    <div className="text-base font-bold text-zinc-100">자미두수 명반</div>
-                    <div className="mt-1 text-[11px] text-zinc-500">{result.solarDate} ({result.lunarDate})</div>
-                    <div className="text-[11px] text-zinc-500">{result.time} ({result.timeRange})</div>
+                    <div className="text-lg font-bold text-zinc-100">자미두수 명반</div>
+                    <div className="mt-1 text-sm text-zinc-400">{result.solarDate} ({result.lunarDate})</div>
+                    <div className="text-sm text-zinc-400">{result.time} ({result.timeRange})</div>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                    <div><span className="text-zinc-500">명주</span> <span className="font-semibold text-violet-300">{result.soul}</span></div>
-                    <div><span className="text-zinc-500">신주</span> <span className="font-semibold text-sky-300">{result.body}</span></div>
-                    <div className="col-span-2 text-center"><span className="text-zinc-500">오행국</span> <span className="font-semibold text-amber-300">{result.fiveElementsClass}</span></div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                    <div><span className="text-zinc-400">명주</span> <span className="font-bold text-violet-300">{result.soul}</span></div>
+                    <div><span className="text-zinc-400">신주</span> <span className="font-bold text-sky-300">{result.body}</span></div>
+                    <div className="col-span-2 text-center"><span className="text-zinc-400">오행국</span> <span className="font-bold text-amber-300">{result.fiveElementsClass}</span></div>
                   </div>
                   {result.saju && (
                     <div className="flex gap-3">
@@ -554,58 +576,59 @@ function App() {
           {/* Stars */}
           {detailTab === 'stars' && selectedPalace && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className={`text-base font-bold ${isMingGong(selectedPalace) ? 'text-amber-300' : 'text-zinc-50'}`}>{selectedPalace.name}</span>
-                <span className="text-sm text-zinc-500">{selectedPalace.heavenlyStem}{selectedPalace.earthlyBranch}</span>
-                {isMingGong(selectedPalace) && <span className="rounded bg-amber-500/25 px-1.5 py-0.5 text-[9px] font-bold text-amber-400">명궁</span>}
-                {selectedPalace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1.5 py-0.5 text-[9px] font-bold text-sky-400">신궁</span>}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={`text-lg font-bold ${palaceNameColor(selectedPalace.name)}`}>{selectedPalace.name}</span>
+                  {selectedPalace.isBodyPalace && <span className="rounded bg-sky-500/25 px-1.5 py-0.5 text-xs font-bold text-sky-300">신궁</span>}
+                </div>
+                <span className="text-sm text-zinc-400">{selectedPalace.heavenlyStem}{selectedPalace.earthlyBranch}</span>
               </div>
 
               {/* 주성 */}
               <div>
-                <div className="mb-1 text-xs font-semibold text-zinc-400">주성</div>
+                <div className="mb-1 text-sm font-semibold text-zinc-300">주성</div>
                 {selectedPalace.majorStars.length ? selectedPalace.majorStars.map((s, i) => (
                   <div key={i} className="flex items-baseline gap-1.5 py-0.5">
-                    <span className="text-sm font-bold text-white">{s.name}</span>
-                    {fmtBright(s.brightness) && <span className="text-xs text-zinc-400">({fmtBright(s.brightness)})</span>}
-                    {s.mutagen && <span className="text-xs font-bold text-amber-400">{s.mutagen}</span>}
+                    <span className="text-base font-bold text-white">{s.name}</span>
+                    {fmtBright(s.brightness) && <span className="text-sm text-zinc-300">({fmtBright(s.brightness)})</span>}
+                    {s.mutagen && <span className={`text-sm font-bold ${mutagenColor(s.mutagen)}`}>{s.mutagen}</span>}
                   </div>
-                )) : <span className="text-xs text-zinc-700">-</span>}
+                )) : <span className="text-sm text-zinc-600">-</span>}
               </div>
 
               {/* 보성/살성 - 색상 구분 */}
               <div>
-                <div className="mb-1 text-xs font-semibold text-zinc-400">
-                  <span className="text-cyan-400/60">길성</span> / <span className="text-rose-400/60">살성</span>
+                <div className="mb-1 text-sm font-semibold text-zinc-300">
+                  <span className="text-cyan-400">길성</span> / <span className="text-rose-400">살성</span>
                 </div>
-                <div className="flex flex-wrap gap-x-2 gap-y-1">
+                <div className="flex flex-wrap gap-x-2.5 gap-y-1">
                   {selectedPalace.minorStars.length ? selectedPalace.minorStars.map((s, i) => (
-                    <span key={i} className={`text-xs ${minorColor(s.type)}`}>
+                    <span key={i} className={`text-sm ${minorColor(s.type)}`}>
                       {s.name}{fmtBright(s.brightness) ? `(${fmtBright(s.brightness)})` : ''}
-                      {s.mutagen ? <span className="font-bold text-amber-400"> {s.mutagen}</span> : null}
+                      {s.mutagen ? <span className={`font-bold ${mutagenColor(s.mutagen)}`}> {s.mutagen}</span> : null}
                     </span>
-                  )) : <span className="text-xs text-zinc-700">-</span>}
+                  )) : <span className="text-sm text-zinc-600">-</span>}
                 </div>
               </div>
 
               {/* 잡성 - type 별 색 */}
               <div>
-                <div className="mb-1 text-xs font-semibold text-zinc-400">잡성</div>
-                <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+                <div className="mb-1 text-sm font-semibold text-zinc-300">잡성</div>
+                <div className="flex flex-wrap gap-x-2.5 gap-y-1">
                   {selectedPalace.adjectiveStars.length ? selectedPalace.adjectiveStars.map((s, i) => (
-                    <span key={i} className={`text-xs ${adjColor(s.type)}`}>{s.name}</span>
-                  )) : <span className="text-xs text-zinc-700">-</span>}
+                    <span key={i} className={`text-sm font-medium ${adjColor(s.type)}`}>{s.name}</span>
+                  )) : <span className="text-sm text-zinc-600">-</span>}
                 </div>
               </div>
 
               {/* 12신 / 대한 */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                <div><span className="text-zinc-500">장생12</span> <span className="text-zinc-300">{selectedPalace.changsheng12 || '-'}</span></div>
-                <div><span className="text-zinc-500">박사12</span> <span className="text-zinc-300">{selectedPalace.boshi12 || '-'}</span></div>
-                <div><span className="text-zinc-500">장전12</span> <span className="text-zinc-300">{selectedPalace.jiangqian12 || '-'}</span></div>
-                <div><span className="text-zinc-500">태세12</span> <span className="text-zinc-300">{selectedPalace.suiqian12 || '-'}</span></div>
-                <div><span className="text-zinc-500">대한</span> <span className="text-zinc-200">{selectedPalace.stage ? `${selectedPalace.stage.from}~${selectedPalace.stage.to}세` : '-'}</span></div>
-                <div><span className="text-zinc-500">소한</span> <span className="text-zinc-200">{selectedPalace.ages?.length ? selectedPalace.ages.join(', ') + '세' : '-'}</span></div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                <div><span className="text-zinc-400">장생12</span> <span className="text-zinc-200">{selectedPalace.changsheng12 || '-'}</span></div>
+                <div><span className="text-zinc-400">박사12</span> <span className="text-zinc-200">{selectedPalace.boshi12 || '-'}</span></div>
+                <div><span className="text-zinc-400">장전12</span> <span className="text-zinc-200">{selectedPalace.jiangqian12 || '-'}</span></div>
+                <div><span className="text-zinc-400">태세12</span> <span className="text-zinc-200">{selectedPalace.suiqian12 || '-'}</span></div>
+                <div><span className="text-zinc-400">대한</span> <span className="text-zinc-100">{selectedPalace.stage ? `${selectedPalace.stage.from}~${selectedPalace.stage.to}세` : '-'}</span></div>
+                <div><span className="text-zinc-400">소한</span> <span className="text-zinc-100">{selectedPalace.ages?.length ? selectedPalace.ages.join(', ') + '세' : '-'}</span></div>
               </div>
 
               {/* 삼방사정 */}
@@ -639,12 +662,12 @@ function App() {
               ] as [string, HScope][]).map(([label, scope]) => scope && (
                 <div key={label} className="rounded-lg border border-zinc-800/30 bg-zinc-950/20 p-3">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-bold text-zinc-100">{label}</span>
-                    <span className="text-xs text-zinc-400">{scope.heavenlyStem}{scope.earthlyBranch}</span>
-                    <span className="text-xs text-zinc-500">{scope.name}</span>
+                    <span className="text-sm font-bold text-zinc-100">{label}</span>
+                    <span className="text-sm text-zinc-300">{scope.heavenlyStem}{scope.earthlyBranch}</span>
+                    <span className="text-sm text-zinc-400">{scope.name}</span>
                   </div>
-                  {scope.mutagen.length > 0 && <div className="mt-1 text-xs text-amber-400/80">사화: {scope.mutagen.join(', ')}</div>}
-                  {scope.palaceNames.length > 0 && <div className="mt-1 text-xs text-zinc-500">궁: {scope.palaceNames.join(', ')}</div>}
+                  {scope.mutagen.length > 0 && <div className="mt-1 text-sm text-amber-400">사화: {scope.mutagen.join(', ')}</div>}
+                  {scope.palaceNames.length > 0 && <div className="mt-1 text-sm text-zinc-400">궁: {scope.palaceNames.join(', ')}</div>}
                 </div>
               )) : <div className="text-sm text-zinc-600">운한 데이터 없음</div>}
             </div>
@@ -654,13 +677,13 @@ function App() {
           {detailTab === 'flies' && (
             result?.flies?.length ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead><tr className="text-zinc-400"><th className="pb-2 text-left font-semibold">궁</th><th className="pb-2 text-center font-semibold">록</th><th className="pb-2 text-center font-semibold">권</th><th className="pb-2 text-center font-semibold">과</th><th className="pb-2 text-center font-semibold">기</th></tr></thead>
+                <table className="w-full text-sm">
+                  <thead><tr><th className="pb-2 text-left font-semibold text-zinc-300">궁</th><th className="pb-2 text-center font-bold text-green-400">록</th><th className="pb-2 text-center font-bold text-green-400">권</th><th className="pb-2 text-center font-bold text-green-400">과</th><th className="pb-2 text-center font-bold text-red-400">기</th></tr></thead>
                   <tbody>
                     {result.flies.map((f, i) => (
                       <tr key={i} className={`border-t border-zinc-800/20 transition-colors hover:bg-zinc-800/15 ${i === selectedIndex ? 'bg-violet-500/8' : ''}`}>
-                        <td className="py-1.5 font-medium text-zinc-200">{f.fromPalace}</td>
-                        {f.routes.map((r, ri) => <td key={ri} className={`py-1.5 text-center ${r.to != null ? 'text-zinc-300' : 'text-zinc-800'}`}>{r.toPalace || '-'}</td>)}
+                        <td className={`py-1.5 font-medium ${palaceNameColor(f.fromPalace)}`}>{f.fromPalace}</td>
+                        {f.routes.map((r, ri) => <td key={ri} className={`py-1.5 text-center font-medium ${r.to != null ? (ri < 3 ? 'text-green-300' : 'text-red-300') : 'text-zinc-800'}`}>{r.toPalace || '-'}</td>)}
                       </tr>
                     ))}
                   </tbody>
