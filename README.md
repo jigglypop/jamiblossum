@@ -4,7 +4,7 @@
 
 자미두수(紫微斗數) 명반을 정확하게 뽑아주는 웹 애플리케이션과 Python CLI 도구입니다.
 
-**배포 URL**: [https://d1b19gqheurni9.cloudfront.net](https://d1b19gqheurni9.cloudfront.net)
+**배포 URL**: [https://jamiblossom.com](https://jamiblossom.com)
 
 ---
 
