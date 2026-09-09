@@ -1,0 +1,17 @@
+{
+  "name": "jamiblossom-core",
+  "type": "module",
+  "description": "WASM core for jamiblossom Zi Wei and calendar calculations.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "jamiblossom_core_bg.wasm",
+    "jamiblossom_core.js",
+    "jamiblossom_core.d.ts"
+  ],
+  "main": "jamiblossom_core.js",
+  "types": "jamiblossom_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
