@@ -78,6 +78,7 @@ export type SajuPillar = {
   shiShenGan: string;
   shiShenZhi: string[];
   diShi: string;
+  xunKong: string;
 };
 
 export type DaYunItem = {

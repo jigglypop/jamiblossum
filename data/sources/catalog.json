@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-18T19:25:49.809Z",
+  "works": [
+    {
+      "id": "saju-yuanhai-ziping",
+      "domain": "saju",
+      "title": "淵海子平",
+      "author": "徐大升 編",
+      "era": "宋元傳本",
+      "rights": "public-domain-work; Wikisource transcription CC BY-SA",
+      "maxPages": 20,
+      "language": "zh-Hant",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "sourceUrl": "https://zh.wikisource.org/zh-hant/%E6%B7%B5%E6%B5%B7%E5%AD%90%E5%B9%B3",
+      "transcriptionLicense": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "evidence": "raw and normalized page SHA-256 plus source URL; page revision was not captured by rendered endpoint",
+      "coverage": {
+        "renderedPages": 1,
+        "selectedPageTitles": [
+          "淵海子平"
+        ],
+        "completeness": "partial selected/rendered witness; not collated against a critical edition"
+      },
+      "checksum": "ec691d7424d1fe842df8553ca50180a9dfeba79f827867dbed4e90695f04759f"
+    },
+    {
+      "id": "saju-sanming-tonghui",
+      "domain": "saju",
+      "title": "三命通會",
+      "author": "萬民英",
+      "era": "明",
+      "rights": "public-domain-work; Wikisource transcription CC BY-SA",
+      "selectedPages": [
+        "三命通會/卷一",
+        "三命通會/卷二",
+        "三命通會/卷三"
+      ],
+      "language": "zh-Hant",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "sourceUrl": "https://zh.wikisource.org/zh-hant/%E4%B8%89%E5%91%BD%E9%80%9A%E6%9C%83",
+      "transcriptionLicense": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "evidence": "raw and normalized page SHA-256 plus source URL; page revision was not captured by rendered endpoint",
+      "coverage": {
+        "renderedPages": 3,
+        "selectedPageTitles": [
+          "三命通會/卷一",
+          "三命通會/卷二",
+          "三命通會/卷三"
+        ],
+        "completeness": "partial selected/rendered witness; not collated against a critical edition"
+      },
+      "checksum": "208f03f98bde9794c9dd5f3e4d72744efbfe93d4485849c2b835fbff2b4319d0"
+    },
+    {
+      "id": "saju-ditiansui",
+      "domain": "saju",
+      "title": "滴天髓",
+      "author": "傳劉基撰; downloaded witness edition unspecified",
+      "era": "明清傳本",
+      "rights": "public-domain-work; Wikisource transcription CC BY-SA",
+      "maxPages": 40,
+      "language": "zh-Hant",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "sourceUrl": "https://zh.wikisource.org/zh-hant/%E6%BB%B4%E5%A4%A9%E9%AB%93",
+      "transcriptionLicense": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "evidence": "raw and normalized page SHA-256 plus source URL; page revision was not captured by rendered endpoint",
+      "coverage": {
+        "renderedPages": 1,
+        "selectedPageTitles": [
+          "滴天髓"
+        ],
+        "completeness": "partial selected/rendered witness; not collated against a critical edition"
+      },
+      "checksum": "74e50926ff34fd89c248d4d5a6846512033e59a1fdf48b0db216babbd19c5f93"
+    },
+    {
+      "id": "saju-wuxing-dayi",
+      "domain": "saju",
+      "title": "五行大義",
+      "author": "蕭吉",
+      "era": "隋",
+      "rights": "public-domain-work; Wikisource transcription CC BY-SA",
+      "selectedPages": [
+        "五行大義/1",
+        "五行大義/2",
+        "五行大義/3",
+        "五行大義/4",
+        "五行大義/5"
+      ],
+      "language": "zh-Hant",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "sourceUrl": "https://zh.wikisource.org/zh-hant/%E4%BA%94%E8%A1%8C%E5%A4%A7%E7%BE%A9",
+      "transcriptionLicense": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "evidence": "raw and normalized page SHA-256 plus source URL; page revision was not captured by rendered endpoint",
+      "coverage": {
+        "renderedPages": 5,
+        "selectedPageTitles": [
+          "五行大義/1",
+          "五行大義/2",
+          "五行大義/3",
+          "五行大義/4",
+          "五行大義/5"
+        ],
+        "completeness": "partial selected/rendered witness; not collated against a critical edition"
+      },
+      "checksum": "66e320690a63372117ca4b1dfb04eb656031292f738a0d8e4520113ef06fb140"
+    },
+    {
+      "id": "saju-qiongtong-baojian",
+      "domain": "saju",
+      "title": "窮通寶鑑",
+      "author": "余春臺 編",
+      "era": "清",
+      "rights": "public-domain-work; Wikisource transcription CC BY-SA",
+      "maxPages": 30,
+      "language": "zh-Hant",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "sourceUrl": "https://zh.wikisource.org/zh-hant/%E7%AA%AE%E9%80%9A%E5%AF%B6%E9%91%91",
+      "transcriptionLicense": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "evidence": "raw and normalized page SHA-256 plus source URL; page revision was not captured by rendered endpoint",
+      "coverage": {
+        "renderedPages": 1,
+        "selectedPageTitles": [
+          "窮通寶鑑"
+        ],
+        "completeness": "partial selected/rendered witness; not collated against a critical edition"
+      },
+      "checksum": "c874c6a83eeba2948c86cd2fe3fde0b01d3bfb9829f1ea878b2020c823971e65"
+    },
+    {
+      "id": "ziwei-quanshu",
+      "domain": "ziwei",
+      "title": "紫微斗數全書",
+      "author": "傳陳摶; 羅洪先序",
+      "era": "明清傳本",
+      "rights": "public-domain-work; Wikisource transcription CC BY-SA",
+      "selectedPages": [
+        "紫微斗數全書/卷一",
+        "紫微斗數全書/卷二",
+        "紫微斗數全書/卷三"
+      ],
+      "language": "zh-Hant",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "sourceUrl": "https://zh.wikisource.org/zh-hant/%E7%B4%AB%E5%BE%AE%E6%96%97%E6%95%B8%E5%85%A8%E6%9B%B8",
+      "transcriptionLicense": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "evidence": "raw and normalized page SHA-256 plus source URL; page revision was not captured by rendered endpoint",
+      "coverage": {
+        "renderedPages": 3,
+        "selectedPageTitles": [
+          "紫微斗數全書/卷一",
+          "紫微斗數全書/卷二",
+          "紫微斗數全書/卷三"
+        ],
+        "completeness": "partial selected/rendered witness; not collated against a critical edition"
+      },
+      "checksum": "6c0bdea12cdeec25dcd710c32eeee0951a75c8ef59669510778e107287c71e39"
+    },
+    {
+      "id": "mangpa-duan-mangpai-mingli-2005",
+      "domain": "mangpa",
+      "lineage": "duan-jianye",
+      "title": "盲派命理",
+      "author": "段建業",
+      "publisher": "時輪造化有限公司",
+      "year": 2005,
+      "isbn": "9789810548766",
+      "rights": "copyrighted-metadata-only",
+      "language": "zh-Hant",
+      "sourceUrl": "https://www.chinyuan.com.tw/all_book/more?id=1228",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "coverage": {
+        "metadataOnly": true,
+        "licensedFullText": false
+      }
+    },
+    {
+      "id": "mangpa-duan-lixiang-2011",
+      "domain": "mangpa",
+      "lineage": "duan-jianye",
+      "title": "段氏理象學：盲派命理研究",
+      "author": "段建業",
+      "publisher": "中國商業出版社",
+      "year": 2011,
+      "isbn": "9787504474575",
+      "pages": 244,
+      "rights": "copyrighted-metadata-and-short-catalog-description-only",
+      "language": "zh-Hans",
+      "sourceUrl": "https://item.xhsd.com/items/1010000103122040",
+      "libraryCatalogUrl": "https://opac.hbnu.edu.cn/ILASOPAC/NTRdrBookRetr.do?LeftLanguageKey=CNMARC&LeftLanguageType=language&LeftPubyearKey=2011&LeftPubyearType=pubyear&LeftSubjectKey=%E5%91%BD%E7%9B%B8&LeftSubjectType=subject&LeftTypeKey=0&LeftTypeType=type&PageNum=10&ResearchSearchType=null&SearchKey=B&SearchType=classno&researchSearchKey=null&searchWay=searchWayPrv",
+      "downloadedAt": "2026-09-18T19:25:49.809Z",
+      "coverage": {
+        "metadataOnly": true,
+        "licensedFullText": false
+      }
+    }
+  ]
+}

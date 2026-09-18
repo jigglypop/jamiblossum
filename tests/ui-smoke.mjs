@@ -25,12 +25,21 @@ await command('Page.enable');
 await command('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1200, deviceScaleFactor: 1, mobile: false });
 await evaluate(`location.reload()`);
 await wait(3000);
-const metrics = await evaluate(`(async()=>{ await document.fonts.ready; return { tabs:[...document.querySelectorAll('.tabs button')].map(x=>x.textContent), font:getComputedStyle(document.body).fontFamily, fontReady:document.fonts.check('16px Pretendard'), bodyFits:document.documentElement.scrollWidth<=innerWidth, pillars:document.querySelectorAll('.pillar').length, currentDaYun:document.querySelectorAll('.dayun.current').length, errors:[] }; })()`);
-if (metrics.tabs.join('|') !== '만세력|자미두수' || !metrics.fontReady || !metrics.font.includes('Pretendard') || metrics.pillars !== 4 || metrics.currentDaYun !== 1) throw new Error(`UI metrics failed: ${JSON.stringify(metrics)}`);
+const metrics = await evaluate(`(async()=>{ await document.fonts.ready; return { tabs:[...document.querySelectorAll('.tabs button')].map(x=>x.textContent), font:getComputedStyle(document.body).fontFamily, fontReady:document.fonts.check('16px Pretendard'), bodyFits:document.documentElement.scrollWidth<=innerWidth, ganjiCells:document.querySelectorAll('.manse-table .ganji-large').length, currentDaYun:document.querySelectorAll('.dayun.current').length, engineInitializations:document.body.dataset.engineInitializations, errors:[] }; })()`);
+if (metrics.tabs.join('|') !== '만세력|자미두수' || !metrics.fontReady || !metrics.font.includes('Pretendard') || metrics.ganjiCells !== 8 || metrics.currentDaYun !== 1 || metrics.engineInitializations !== '1') throw new Error(`UI metrics failed: ${JSON.stringify(metrics)}`);
+const latencies = [];
+for (const value of ['01:30','03:30','05:30','07:30','09:30']) {
+  const before = await evaluate(`document.querySelector('.manse-table').textContent`);
+  const started = Date.now();
+  await evaluate(`(()=>{const input=document.querySelector('input[name=time]');input.value=${JSON.stringify(value)};input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  for (let attempt=0; attempt<100; attempt++) { if (await evaluate(`document.querySelector('.status').classList.contains('ready') && document.querySelector('.manse-table').textContent !== ${JSON.stringify(before)}`)) break; await wait(20); }
+  latencies.push(Date.now()-started);
+}
 await evaluate(`document.querySelectorAll('.tabs button')[1].click()`);
 await wait(300);
-const ziwei = await evaluate(`({ palaces:document.querySelectorAll('.palace-card').length, starGroups:document.querySelectorAll('.star-group').length, related:document.querySelectorAll('.palace-card.related').length, currentDecadal:document.querySelectorAll('.palace-card.current-decadal').length, relation:document.querySelector('.relation-detail')?.textContent, labels:document.body.innerText.includes('래인궁') })`);
-if (ziwei.palaces !== 12 || ziwei.starGroups < 24 || ziwei.related !== 4 || ziwei.currentDecadal !== 1 || !ziwei.relation) throw new Error(`Ziwei metrics failed: ${JSON.stringify(ziwei)}`);
+await wait(100);
+const ziwei = await evaluate(`({ palaces:document.querySelectorAll('.palace-card').length, starGroups:document.querySelectorAll('.star-group').length, related:document.querySelectorAll('.palace-card.related').length, currentDecadal:document.querySelectorAll('.palace-card.current-decadal').length, relation:document.querySelector('.relation-detail')?.textContent, labels:document.body.innerText.includes('래인궁'), polygon:document.querySelectorAll('.relation-lines polygon').length, opposite:document.querySelectorAll('.relation-lines line').length, stroke:getComputedStyle(document.querySelector('.trine-line')).strokeWidth })`);
+if (ziwei.palaces !== 12 || ziwei.starGroups < 24 || ziwei.related !== 4 || ziwei.currentDecadal !== 1 || !ziwei.relation || ziwei.polygon !== 1 || ziwei.opposite !== 1 || Number.parseFloat(ziwei.stroke) < 2) throw new Error(`Ziwei metrics failed: ${JSON.stringify(ziwei)}`);
 
 await mkdir('artifacts', { recursive: true });
 const desktop = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -41,5 +50,6 @@ const mobile = await evaluate(`({ bodyFits:document.documentElement.scrollWidth<
 if (!mobile.bodyFits || mobile.width !== 390 || mobile.tabs !== 2) throw new Error(`Mobile metrics failed: ${JSON.stringify(mobile)}`);
 const mobileShot = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
 await writeFile('artifacts/mobile-verified.png', Buffer.from(mobileShot.result.data, 'base64'));
-console.log(JSON.stringify({ metrics, ziwei, mobile }));
+latencies.sort((a,b)=>a-b); const latency = { samples:latencies, median:latencies[Math.floor(latencies.length/2)], p95:latencies[Math.ceil(latencies.length*.95)-1] };
+console.log(JSON.stringify({ metrics, ziwei, mobile, latency }));
 socket.close(); child.kill();

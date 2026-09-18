@@ -1,0 +1,14 @@
+{
+  "domain": "saju",
+  "question": "용신 원문",
+  "chart": {
+    "saju": {
+      "year": { "cn": "甲子" },
+      "month": { "cn": "丙寅" },
+      "day": { "cn": "戊辰" },
+      "hour": { "cn": "庚申" },
+      "daYun": [],
+      "currentDaYunIndex": null
+    }
+  }
+}

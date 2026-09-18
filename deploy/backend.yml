@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Private IAM-only Jami Blossom source retrieval and reading backend.
+Parameters:
+  ArtifactBucket: { Type: String }
+  ArtifactKey: { Type: String }
+  ArtifactVersion: { Type: String }
+Conditions:
+  HasArtifactVersion: !Not [!Equals [!Ref ArtifactVersion, 'NONE']]
+Resources:
+  BackendRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: lambda.amazonaws.com }, Action: 'sts:AssumeRole' }]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]
+  BackendFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: jamiblossum-reading-backend
+      Runtime: nodejs22.x
+      Handler: server/backend.lambdaHandler
+      Role: !GetAtt BackendRole.Arn
+      Code:
+        S3Bucket: !Ref ArtifactBucket
+        S3Key: !Ref ArtifactKey
+        S3ObjectVersion: !If [HasArtifactVersion, !Ref ArtifactVersion, !Ref 'AWS::NoValue']
+      Timeout: 55
+      MemorySize: 256
+      Environment:
+        Variables:
+          OPENAI_MODEL: gpt-5.6-luna
+  BackendUrl:
+    Type: AWS::Lambda::Url
+    Properties: { AuthType: AWS_IAM, InvokeMode: BUFFERED, TargetFunctionArn: !GetAtt BackendFunction.Arn }
+  BackendUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunctionUrl, FunctionName: !Ref BackendFunction, FunctionUrlAuthType: AWS_IAM, Principal: '*' }
+Outputs:
+  FunctionName: { Value: !Ref BackendFunction }
+  FunctionUrl: { Value: !GetAtt BackendUrl.FunctionUrl }

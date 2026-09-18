@@ -308,6 +308,7 @@ type SajuPillar = {
   shiShenGan: string
   shiShenZhi: string[]
   diShi: string
+  xunKong: string
 }
 
 type DaYunItem = {
@@ -370,7 +371,7 @@ function parsePillar(cn: string): SajuPillar {
     branch: cn[1] ?? '',
     stemKo: si >= 0 ? STEMS_KO[si] : '',
     branchKo: bi >= 0 ? BRANCHES_KO[bi] : '',
-    wuxing: '', nayin: '', hideGan: '', hideGanKo: '', shiShenBranch: '', shiShenGan: '', shiShenZhi: [], diShi: '',
+    wuxing: '', nayin: '', hideGan: '', hideGanKo: '', shiShenBranch: '', shiShenGan: '', shiShenZhi: [], diShi: '', xunKong: '',
   }
 }
 
@@ -379,9 +380,10 @@ function parsePillarFull(
   wuxing: string,
   nayin: string,
   diShi: string,
+  xunKong: string,
 ): SajuPillar {
   const base = parsePillar(cn)
-  return { ...base, wuxing, nayin, diShi }
+  return { ...base, wuxing, nayin, diShi, xunKong }
 }
 
 function computeSaju(
@@ -426,10 +428,10 @@ function computeSaju(
   const ec = solar.getLunar().getEightChar()
   ec.setSect(ziTimeMode === 'split' ? 1 : 2)
 
-  const yearPillar = parsePillarFull(ec.getYear(), ec.getYearWuXing(), ec.getYearNaYin(), ec.getYearDiShi())
-  const monthPillar = parsePillarFull(ec.getMonth(), ec.getMonthWuXing(), ec.getMonthNaYin(), ec.getMonthDiShi())
-  const dayPillar = parsePillarFull(ec.getDay(), ec.getDayWuXing(), ec.getDayNaYin(), ec.getDayDiShi())
-  const hourPillar = parsePillarFull(ec.getTime(), ec.getTimeWuXing(), ec.getTimeNaYin(), ec.getTimeDiShi())
+  const yearPillar = parsePillarFull(ec.getYear(), ec.getYearWuXing(), ec.getYearNaYin(), ec.getYearDiShi(), ec.getYearXunKong())
+  const monthPillar = parsePillarFull(ec.getMonth(), ec.getMonthWuXing(), ec.getMonthNaYin(), ec.getMonthDiShi(), ec.getMonthXunKong())
+  const dayPillar = parsePillarFull(ec.getDay(), ec.getDayWuXing(), ec.getDayNaYin(), ec.getDayDiShi(), ec.getDayXunKong())
+  const hourPillar = parsePillarFull(ec.getTime(), ec.getTimeWuXing(), ec.getTimeNaYin(), ec.getTimeDiShi(), ec.getTimeXunKong())
 
   /* 일간 기준 십성과 lunar-javascript 원자료의 지장간 */
   const dayGan = dayPillar.stem
