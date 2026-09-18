@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Least-privilege GitHub Actions deployment role for jigglypop/jamiblossum.
+Parameters:
+  GitHubOidcProviderArn:
+    Type: String
+    Default: arn:aws:iam::960243570517:oidc-provider/token.actions.githubusercontent.com
+Resources:
+  ProductionDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: jamiblossum-github-production-deploy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: repo:jigglypop/jamiblossum:ref:refs/heads/main
+      Policies:
+        - PolicyName: PublishPrivateSite
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource: arn:aws:s3:::jamiblossom-web-960243570517
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: arn:aws:s3:::jamiblossom-web-960243570517/*
+              - Effect: Allow
+                Action:
+                  - cloudfront:GetDistribution
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                Resource: arn:aws:cloudfront::960243570517:distribution/E1GZVFASVCCZI8
+Outputs:
+  RoleArn:
+    Value: !GetAtt ProductionDeployRole.Arn

@@ -1,6 +1,6 @@
 {
   "name": "jamiblossom",
-  "version": "0.1.1",
+  "version": "0.1.0",
   "description": "WASM-first Zi Wei Dou Shu and East Asian calendar charting library.",
   "type": "module",
   "license": "MIT",
@@ -21,22 +21,32 @@
   },
   "files": [
     "dist",
-    "wasm",
+    "wasm/Cargo.toml",
+    "wasm/Cargo.lock",
+    "wasm/src",
+    "wasm/LICENSE",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node scripts/test.mjs",
     "build": "node scripts/build.mjs",
     "build:wasm": "wasm-pack build wasm --target web --out-dir ../src/wasm-pkg --out-name jamiblossom_core",
     "typecheck": "tsc --noEmit",
-    "typecheck:build": "tsc -p tsconfig.build.json --noEmit false"
+    "typecheck:build": "tsc -p tsconfig.build.json --noEmit",
+    "pretest": "pnpm build",
+    "test": "node --test tests/*.test.mjs",
+    "dev": "vite --force",
+    "prebuild:web": "pnpm build",
+    "build:web": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5180 --strictPort",
+    "typecheck:web": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "iztro": "^2.5.8",
     "lunar-javascript": "^1.7.7"
   },
   "devDependencies": {
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.3.0"
   }
 }

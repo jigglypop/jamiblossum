@@ -1,7 +1,6 @@
 import { astro } from 'iztro'
 import { Lunar, Solar } from 'lunar-javascript'
-import { seoulNowParts } from './time.js'
-import type { Chart, ChartRequest, ZiTimeMode, ZiweiCalendar as Calendar } from './types'
+import type { Chart, ChartRequest, ZiTimeMode, ZiweiCalendar as Calendar } from './types.js'
 
 /* ------------------------------------------------------------------ */
 /*  Input normalization (pure JS - no Pyodide)                         */
@@ -18,6 +17,32 @@ function normDate(value: string | undefined): string {
   const m = MDY_RE.exec(t)
   if (m) return `${Number(m[3])}-${Number(m[1])}-${Number(m[2])}`
   return t
+}
+
+function seoulCivilNow(): { date: string; hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date())
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? ''
+  return { date: `${part('year')}-${part('month')}-${part('day')}`, hour: Number(part('hour')), minute: Number(part('minute')) }
+}
+
+function isValidSolarDate(value: string): boolean {
+  if (!DATE_RE.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  if (year < 100 || year > 2200 || month < 1 || month > 12 || day < 1) return false
+  return day <= new Date(Date.UTC(year, month, 0)).getUTCDate()
+}
+
+function lunarFromDate(value: string, isLeapMonth: boolean): any {
+  if (!DATE_RE.test(value)) throw new Error('date must be a valid lunar YYYY-M-D date')
+  const [year, month, day] = value.split('-').map(Number)
+  if (year < 100 || year > 2200 || month < 1 || month > 12 || day < 1 || day > 30) {
+    throw new Error('date must be a valid lunar YYYY-M-D date')
+  }
+  try {
+    return Lunar.fromYmd(year, isLeapMonth ? -month : month, day)
+  } catch {
+    throw new Error('date must be a valid lunar YYYY-M-D date')
+  }
 }
 
 function normGender(value: string | undefined): 'male' | 'female' {
@@ -84,6 +109,31 @@ function shiftDateTime(date: string, hour: number, minute: number, minutes: numb
   }
 }
 
+function shiftLunarDateTime(
+  date: string,
+  isLeapMonth: boolean,
+  hour: number,
+  minute: number,
+  minutes: number,
+): { date: string; hour: number; minute: number; isLeapMonth: boolean } {
+  const solar = lunarFromDate(date, isLeapMonth).getSolar()
+  const shifted = shiftDateTime(
+    `${solar.getYear()}-${solar.getMonth()}-${solar.getDay()}`,
+    hour,
+    minute,
+    minutes,
+  )
+  const [year, month, day] = shifted.date.split('-').map(Number)
+  const lunar = Solar.fromYmd(year, month, day).getLunar()
+  const lunarMonth = lunar.getMonth()
+  return {
+    date: `${lunar.getYear()}-${Math.abs(lunarMonth)}-${lunar.getDay()}`,
+    hour: shifted.hour,
+    minute: shifted.minute,
+    isLeapMonth: lunarMonth < 0,
+  }
+}
+
 export type NormalizedPayload = {
   calendar: Calendar
   date: string
@@ -115,7 +165,11 @@ export type CalculateCoreHooks = {
 function normalize(payload: ChartRequest): NormalizedPayload {
   const calendar = (payload.calendar === 'lunar' ? 'lunar' : 'solar') as Calendar
   const date = normDate(payload.date)
-  if (!DATE_RE.test(date)) throw new Error('date must be YYYY-M-D')
+  const birthIsLeapMonth = Boolean(payload.isLeapMonth)
+  let isLeapMonth = birthIsLeapMonth
+  let inputLunar: any = null
+  if (calendar === 'lunar') inputLunar = lunarFromDate(date, birthIsLeapMonth)
+  else if (!isValidSolarDate(date)) throw new Error('date must be a valid YYYY-M-D date')
 
   const gender = normGender(payload.gender)
 
@@ -125,10 +179,13 @@ function normalize(payload: ChartRequest): NormalizedPayload {
   let calcDate = date
   if (ti == null && payload.time) {
     const parsed = parseTime(payload.time)
-    const shifted = shiftDateTime(date, parsed.h, parsed.m, KOREA_TIME_CORRECTION_MINUTES)
+    const shifted = calendar === 'lunar'
+      ? shiftLunarDateTime(date, isLeapMonth, parsed.h, parsed.m, KOREA_TIME_CORRECTION_MINUTES)
+      : shiftDateTime(date, parsed.h, parsed.m, KOREA_TIME_CORRECTION_MINUTES)
     calcDate = shifted.date
     hour = shifted.hour
     minute = shifted.minute
+    if ('isLeapMonth' in shifted) isLeapMonth = Boolean(shifted.isLeapMonth)
     ti = timeToIndex(hour)
   } else if (ti != null) {
     // Derive hour from timeIndex for saju
@@ -137,14 +194,15 @@ function normalize(payload: ChartRequest): NormalizedPayload {
     else { hour = (ti - 1) * 2 + 1; minute = 0 }
   }
   if (ti == null) ti = 6
-  if (ti < 0 || ti > 12) throw new Error('timeIndex must be 0..12')
+  if (!Number.isInteger(ti) || ti < 0 || ti > 12) throw new Error('timeIndex must be an integer from 0..12')
 
   const language = (payload.language ?? 'ko-KR').trim()
-  const isLeapMonth = Boolean(payload.isLeapMonth)
   const fixLeap = payload.fixLeap === undefined ? true : Boolean(payload.fixLeap)
 
-  const flowDate = normDate(payload.flowDate)
-  if (flowDate && !DATE_RE.test(flowDate)) throw new Error('flowDate must be YYYY-M-D')
+  const now = seoulCivilNow()
+  const explicitFlowDate = normDate(payload.flowDate)
+  const flowDate = explicitFlowDate || now.date
+  if (flowDate && !isValidSolarDate(flowDate)) throw new Error('flowDate must be a valid YYYY-M-D date')
 
   let flowHour = 0
   let flowMinute = 0
@@ -152,14 +210,29 @@ function normalize(payload: ChartRequest): NormalizedPayload {
   let calcFlowDate = flowDate
   if (fti == null && payload.flowTime) {
     const parsed = parseTime(payload.flowTime)
-    const shifted = shiftDateTime(flowDate || date, parsed.h, parsed.m, KOREA_TIME_CORRECTION_MINUTES)
+    let flowBaseDate = flowDate || date
+    if (!flowDate && inputLunar) {
+      const solar = inputLunar.getSolar()
+      flowBaseDate = `${solar.getYear()}-${solar.getMonth()}-${solar.getDay()}`
+    }
+    const shifted = shiftDateTime(flowBaseDate, parsed.h, parsed.m, KOREA_TIME_CORRECTION_MINUTES)
+    calcFlowDate = shifted.date
+    flowHour = shifted.hour
+    flowMinute = shifted.minute
+    fti = timeToIndex(flowHour)
+  } else if (fti != null) {
+    if (fti === 0) { flowHour = 0; flowMinute = 0 }
+    else if (fti === 12) { flowHour = 23; flowMinute = 0 }
+    else { flowHour = (fti - 1) * 2 + 1; flowMinute = 0 }
+  } else if (!explicitFlowDate) {
+    const shifted = shiftDateTime(now.date, now.hour, now.minute, KOREA_TIME_CORRECTION_MINUTES)
     calcFlowDate = shifted.date
     flowHour = shifted.hour
     flowMinute = shifted.minute
     fti = timeToIndex(flowHour)
   }
   if (fti == null) fti = 0
-  if (fti < 0 || fti > 12) throw new Error('flowTimeIndex must be 0..12')
+  if (!Number.isInteger(fti) || fti < 0 || fti > 12) throw new Error('flowTimeIndex must be an integer from 0..12')
 
   const ziTimeMode = payload.ziTimeMode === 'fixed' ? 'fixed' : 'split'
 
@@ -244,6 +317,8 @@ type DaYunItem = {
   endAge: number
   startYear: number
   endYear: number
+  startSolarDateTime: string | null
+  endSolarDateTimeExclusive: string | null
 }
 
 type LunarDaYun = {
@@ -253,6 +328,14 @@ type LunarDaYun = {
   getStartYear(): number
   getEndYear(): number
 }
+
+type LunarSolar = { nextYear(years: number): LunarSolar; toYmdHms(): string }
+type LunarYun = {
+  getStartYear(): number; getStartMonth(): number; getStartDay(): number; getStartSolar(): LunarSolar
+  isForward(): boolean; getDaYun(n: number): LunarDaYun[]
+}
+
+function solarDateTime(solar: LunarSolar): string { return solar.toYmdHms().replace(' ', 'T') }
 
 type SajuResult = {
   year: SajuPillar
@@ -269,8 +352,11 @@ type SajuResult = {
   shenGongNaYin: string
   dayXunKong: string
   yunStartDesc: string
+  daYunStartSolarDateTime: string
+  daYunReferenceDateTime: string
   isForward: boolean
   daYun: DaYunItem[]
+  currentDaYunIndex: number | null
 }
 
 function parsePillar(cn: string): SajuPillar {
@@ -306,7 +392,16 @@ function computeSaju(
   isLeapMonth: boolean,
   gender: 'male' | 'female',
   ziTimeMode: ZiTimeMode,
+  flowDate: string,
+  flowHour: number,
+  flowMinute: number,
 ): SajuResult {
+  if (!flowDate) {
+    const now = seoulCivilNow()
+    flowDate = now.date
+    flowHour = now.hour
+    flowMinute = now.minute
+  }
   const [y, m, d] = dateStr.split('-').map(Number)
 
   let solarYear: number
@@ -339,15 +434,11 @@ function computeSaju(
   /* 일간 기준 십성과 lunar-javascript 원자료의 지장간 */
   const dayGan = dayPillar.stem
   const pillarsWithHideGan: Array<[SajuPillar, string[]]> = [
-    [yearPillar, ec.getYearHideGan()],
-    [monthPillar, ec.getMonthHideGan()],
-    [dayPillar, ec.getDayHideGan()],
-    [hourPillar, ec.getTimeHideGan()],
+    [yearPillar, ec.getYearHideGan()], [monthPillar, ec.getMonthHideGan()],
+    [dayPillar, ec.getDayHideGan()], [hourPillar, ec.getTimeHideGan()],
   ]
   for (const [p, hgList] of pillarsWithHideGan) {
-    // 일주만 일원이다. 다른 기둥의 같은 천간은 비견이다.
     p.shiShenGan = p === dayPillar ? '\uc77c\uc6d0' : computeShiShen(dayGan, p.stem)
-    // lunar-javascript가 제공한 순서를 그대로 보존한다.
     p.hideGan = hgList.join('')
     p.hideGanKo = hgList.map(ch => stemToKo(ch)).join('')
     // 지지 십성: 지지의 정기(지장간 마지막 글자) 기준
@@ -365,18 +456,25 @@ function computeSaju(
 
   // DaYun (대운)
   const genderNum = gender === 'male' ? 1 : 0
-  const yun = ec.getYun(genderNum)
+  const yun = ec.getYun(genderNum) as LunarYun
   const yunStartDesc = `${yun.getStartYear()}년 ${yun.getStartMonth()}개월 ${yun.getStartDay()}일`
+  const startSolar = yun.getStartSolar()
+  const daYunStartSolarDateTime = solarDateTime(startSolar)
 
   const daYunList = yun.getDaYun(10) as LunarDaYun[]
-  const daYun: DaYunItem[] = daYunList.map((dy) => ({
+  const daYun: DaYunItem[] = daYunList.map((dy, index) => ({
     ganZhi: dy.getGanZhi(),
     ganZhiKo: cnToKo(dy.getGanZhi()),
     startAge: dy.getStartAge(),
     endAge: dy.getEndAge(),
     startYear: dy.getStartYear(),
     endYear: dy.getEndYear(),
+    startSolarDateTime: index === 0 ? null : solarDateTime(startSolar.nextYear((index - 1) * 10)),
+    endSolarDateTimeExclusive: index === 0 ? null : solarDateTime(startSolar.nextYear(index * 10)),
   }))
+  const [flowYear, flowMonth, flowDay] = flowDate.split('-').map(Number)
+  const daYunReferenceDateTime = `${String(flowYear).padStart(4, '0')}-${String(flowMonth).padStart(2, '0')}-${String(flowDay).padStart(2, '0')}T${String(flowHour).padStart(2, '0')}:${String(flowMinute).padStart(2, '0')}:00`
+  const currentDaYunIndex = daYun.findIndex((item) => item.startSolarDateTime !== null && item.endSolarDateTimeExclusive !== null && daYunReferenceDateTime >= item.startSolarDateTime && daYunReferenceDateTime < item.endSolarDateTimeExclusive)
 
   return {
     year: yearPillar,
@@ -393,8 +491,11 @@ function computeSaju(
     shenGongNaYin: ec.getShenGongNaYin(),
     dayXunKong: ec.getDayXunKong(),
     yunStartDesc,
+    daYunStartSolarDateTime,
+    daYunReferenceDateTime,
     isForward: yun.isForward(),
     daYun,
+    currentDaYunIndex: currentDaYunIndex < 0 ? null : currentDaYunIndex,
   }
 }
 
@@ -524,14 +625,7 @@ function pickHoroscopeStars(obj: Record<string, unknown>) {
   const rawStars = obj.stars
   if (!Array.isArray(rawStars)) return undefined
   return rawStars.map((palaceStars) => getArray({ stars: palaceStars }, 'stars')
-    .map((star) => {
-      if (!isRecord(star)) return null
-      return {
-        name: getString(star, 'name'),
-        type: getString(star, 'type'),
-        scope: getString(star, 'scope'),
-      }
-    })
+    .map((star) => isRecord(star) ? { name: getString(star, 'name'), type: getString(star, 'type'), scope: getString(star, 'scope') } : null)
     .filter(Boolean) as Array<{ name: string; type: string; scope: string }>)
 }
 
@@ -557,11 +651,8 @@ function pickHoroscope(input: unknown, palaces: ReturnType<typeof pickChart>['pa
   const selectedLongTerm = pickHScope(input.decadal, 'decadal')
   const nominalAge = age?.nominalAge
   const stage = selectedLongTerm ? palaces[selectedLongTerm.index]?.stage : null
-  const isDecadal = Boolean(stage && typeof nominalAge === 'number' &&
-    nominalAge >= stage.from && nominalAge <= stage.to)
-  const childhood = selectedLongTerm && !isDecadal
-    ? { ...selectedLongTerm, kind: 'childhood' as const }
-    : null
+  const isDecadal = Boolean(stage && typeof nominalAge === 'number' && nominalAge >= stage.from && nominalAge <= stage.to)
+  const childhood = selectedLongTerm && !isDecadal ? { ...selectedLongTerm, kind: 'childhood' as const } : null
   return {
     solarDate: getString(input, 'solarDate'),
     lunarDate: getString(input, 'lunarDate'),
@@ -586,10 +677,13 @@ export function calculateZiweiChartWithCore(payload: ChartRequest, core: Calcula
 }
 
 function calculateZiweiChartFromNormalized(
-  _payload: ChartRequest,
+  payload: ChartRequest,
   params: NormalizedPayload,
   surroundedProvider: (palaceCount: number) => CoreSurrounded[],
 ): Chart {
+
+  const requestReference = normalize(payload)
+  const flowReference = { date: requestReference.flowDate, hour: requestReference.flowHour, minute: requestReference.flowMinute }
 
   // 1) iztro chart
   const astrolabe =
@@ -600,7 +694,7 @@ function calculateZiweiChartFromNormalized(
   const chart = pickChart(astrolabe)
 
   // 2) Correct saju via lunar-javascript (solar term based)
-  const saju = computeSaju(params.calendar, params.date, params.hour, params.minute, params.isLeapMonth, params.gender, params.ziTimeMode)
+  const saju = computeSaju(params.calendar, params.date, params.hour, params.minute, params.isLeapMonth, params.gender, params.ziTimeMode, flowReference.date, flowReference.hour, flowReference.minute)
 
   // 3) 삼방사정
   const pals = chart.palaces
@@ -613,9 +707,7 @@ function calculateZiweiChartFromNormalized(
   // 4) Horoscope
   let horoscope: ReturnType<typeof pickHoroscope> = null
   try {
-    // A date-only string must not become a UTC instant and shift a day on hosts west of UTC.
-    const d = params.flowDate || seoulNowParts().date
-    const rawH = astrolabe.horoscope(d, params.flowTimeIndex)
+    const rawH = astrolabe.horoscope(flowReference.date, requestReference.flowTimeIndex)
     horoscope = pickHoroscope(rawH, chart.palaces)
   } catch {
     horoscope = null

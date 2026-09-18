@@ -1,4 +1,4 @@
-import type { ChartRequest, ZiweiView } from './types';
+import type { ChartRequest, ZiweiView } from './types.js';
 
 export function buildShareUrl(
   req: ChartRequest,

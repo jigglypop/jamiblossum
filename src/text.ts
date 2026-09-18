@@ -1,5 +1,5 @@
 import { lunarNominalAgeFromSolarDate, palaceForAge } from './time.js';
-import type { AdjectiveStar, Chart, HoroscopeScope, Palace, Star } from './types';
+import type { AdjectiveStar, Chart, HoroscopeScope, Palace, Star } from './types.js';
 
 const BRIGHTNESS_MAP: Record<string, string> = {
   '[+3]': '묘',

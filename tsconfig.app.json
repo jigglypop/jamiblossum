@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client"]
+  },
+  "include": ["app", "vite.config.ts", "src/lunar-javascript.d.ts"]
+}

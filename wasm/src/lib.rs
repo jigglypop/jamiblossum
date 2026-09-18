@@ -85,8 +85,8 @@ fn normalize_request(request: NormalizeRequest) -> Result<NormalizedRequest, JsV
     .to_string();
 
     let date = normalize_date(&request.date);
-    if !is_date_shape(&date) {
-        return Err(JsValue::from_str("date must be YYYY-M-D"));
+    if !is_valid_date(&date, calendar == "lunar") {
+        return Err(JsValue::from_str("date must be a valid YYYY-M-D date"));
     }
 
     let gender = normalize_gender(&request.gender)?;
@@ -123,8 +123,8 @@ fn normalize_request(request: NormalizeRequest) -> Result<NormalizedRequest, JsV
     }
 
     let flow_date = request.flow_date.as_deref().map(normalize_date).unwrap_or_default();
-    if !flow_date.is_empty() && !is_date_shape(&flow_date) {
-        return Err(JsValue::from_str("flowDate must be YYYY-M-D"));
+    if !flow_date.is_empty() && !is_valid_date(&flow_date, false) {
+        return Err(JsValue::from_str("flowDate must be a valid YYYY-M-D date"));
     }
 
     let mut flow_hour = 0;
@@ -197,7 +197,7 @@ fn normalize_date(value: &str) -> String {
     trimmed.to_string()
 }
 
-fn is_date_shape(value: &str) -> bool {
+fn is_valid_date(value: &str, lunar: bool) -> bool {
     let parts: Vec<&str> = value.split('-').collect();
     if parts.len() != 3 {
         return false;
@@ -211,7 +211,14 @@ fn is_date_shape(value: &str) -> bool {
     let Ok(day) = parts[2].parse::<i32>() else {
         return false;
     };
-    (100..=2200).contains(&year) && (1..=12).contains(&month) && (1..=31).contains(&day)
+    if !(100..=2200).contains(&year) || !(1..=12).contains(&month) || day < 1 {
+        return false;
+    }
+    if lunar {
+        day <= 30
+    } else {
+        days_in_month(year, month).is_ok_and(|days| day <= days)
+    }
 }
 
 fn normalize_gender(value: &str) -> Result<String, JsValue> {

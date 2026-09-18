@@ -87,6 +87,8 @@ export type DaYunItem = {
   endAge: number;
   startYear: number;
   endYear: number;
+  startSolarDateTime: string | null;
+  endSolarDateTimeExclusive: string | null;
 };
 
 export type Saju = {
@@ -104,8 +106,11 @@ export type Saju = {
   shenGongNaYin: string;
   dayXunKong: string;
   yunStartDesc: string;
+  daYunStartSolarDateTime: string;
+  daYunReferenceDateTime: string;
   isForward: boolean;
   daYun: DaYunItem[];
+  currentDaYunIndex: number | null;
 };
 
 export type HoroscopeScope = {

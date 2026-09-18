@@ -1,4 +1,4 @@
-import type { Palace, TimeBranchOption } from './types';
+import type { Palace, TimeBranchOption } from './types.js';
 import { Lunar, Solar } from 'lunar-javascript';
 
 export const DATE_RE = /^\d{4}-\d{1,2}-\d{1,2}$/;
@@ -37,18 +37,22 @@ export function digitsOnly(s: string, max: number): string {
 export function isValidDate(s: string): boolean {
   if (!DATE_RE.test(s)) return false;
   const [y, m, d] = s.split('-').map(Number);
-  return y >= 100 && y <= 2200 && m >= 1 && m <= 12 && d >= 1 && d <= 31;
+  if (y < 100 || y > 2200 || m < 1 || m > 12 || d < 1) return false;
+  return d <= new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
 export function isValidTime(s: string): boolean {
-  return /^\d{1,2}:\d{2}$/.test(s);
+  if (!/^\d{1,2}:\d{2}$/.test(s)) return false;
+  const [hour, minute] = s.split(':').map(Number);
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
 }
 
 export function shiftTime(value: string, minutes: number): { hour: number; minute: number } | null {
   if (!isValidTime(value)) return null;
   const [rawHour, rawMinute] = value.split(':').map(Number);
   if (!Number.isFinite(rawHour) || !Number.isFinite(rawMinute)) return null;
-  const total = (rawHour * 60 + rawMinute + minutes + 24 * 60) % (24 * 60);
+  const dayMinutes = 24 * 60;
+  const total = ((rawHour * 60 + rawMinute + minutes) % dayMinutes + dayMinutes) % dayMinutes;
   return { hour: Math.floor(total / 60), minute: total % 60 };
 }
 

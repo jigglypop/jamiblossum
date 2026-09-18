@@ -84,3 +84,9 @@ export function chartConnectionPoint(pos: { row: number; col: number }): { x: nu
   if (pos.col === 0) return { x: 25, y: ((pos.row + 0.5) / 4) * 100 };
   return { x: 75, y: ((pos.row + 0.5) / 4) * 100 };
 }
+
+export const PALACE_GRID_AREAS: Readonly<Record<string, string>> = {
+  巳: 'si', 사: 'si', 午: 'wu', 오: 'wu', 未: 'wei', 미: 'wei', 申: 'shen', 신: 'shen',
+  酉: 'you', 유: 'you', 戌: 'xu', 술: 'xu', 亥: 'hai', 해: 'hai', 子: 'zi', 자: 'zi',
+  丑: 'chou', 축: 'chou', 寅: 'yin', 인: 'yin', 卯: 'mao', 묘: 'mao', 辰: 'chen', 진: 'chen',
+};

@@ -1,0 +1,9 @@
+{
+  "Comment": "Replace dead CloudFront alias and add apex/www dual-stack aliases for Jami Blossom",
+  "Changes": [
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "jamiblossom.com", "Type": "A", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "dnyvo6ird4gvy.cloudfront.net", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "jamiblossom.com", "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "dnyvo6ird4gvy.cloudfront.net", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "www.jamiblossom.com", "Type": "A", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "dnyvo6ird4gvy.cloudfront.net", "EvaluateTargetHealth": false } } },
+    { "Action": "UPSERT", "ResourceRecordSet": { "Name": "www.jamiblossom.com", "Type": "AAAA", "AliasTarget": { "HostedZoneId": "Z2FDTNDATAQYW2", "DNSName": "dnyvo6ird4gvy.cloudfront.net", "EvaluateTargetHealth": false } } }
+  ]
+}

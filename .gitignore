@@ -1,3 +1,10 @@
 node_modules/
-dist/
+dist/ 
+node_modules
+dist
+web-dist/
 wasm/target/
+server/prompt-templates.ts
+server/private-prompts/
+deploy/releases/
+artifacts/

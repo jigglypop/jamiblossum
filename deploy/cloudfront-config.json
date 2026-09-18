@@ -1,0 +1,46 @@
+{
+  "CallerReference": "jamiblossom-production-20260919",
+  "Aliases": { "Quantity": 2, "Items": ["jamiblossom.com", "www.jamiblossom.com"] },
+  "DefaultRootObject": "index.html",
+  "Comment": "Jami Blossom production web",
+  "Enabled": true,
+  "HttpVersion": "http2and3",
+  "IsIPV6Enabled": true,
+  "Origins": {
+    "Quantity": 1,
+    "Items": [{
+      "Id": "jamiblossom-s3",
+      "DomainName": "jamiblossom-web-960243570517.s3.ap-northeast-2.amazonaws.com",
+      "OriginPath": "",
+      "CustomHeaders": { "Quantity": 0 },
+      "S3OriginConfig": { "OriginAccessIdentity": "" },
+      "ConnectionAttempts": 3,
+      "ConnectionTimeout": 10,
+      "OriginAccessControlId": "EQE07ZQ2TZ3Z1"
+    }]
+  },
+  "DefaultCacheBehavior": {
+    "TargetOriginId": "jamiblossom-s3",
+    "ViewerProtocolPolicy": "redirect-to-https",
+    "AllowedMethods": { "Quantity": 2, "Items": ["HEAD", "GET"], "CachedMethods": { "Quantity": 2, "Items": ["HEAD", "GET"] } },
+    "SmoothStreaming": false,
+    "Compress": true,
+    "LambdaFunctionAssociations": { "Quantity": 0 },
+    "FunctionAssociations": { "Quantity": 0 },
+    "FieldLevelEncryptionId": "",
+    "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+    "ResponseHeadersPolicyId": "67f7725c-6f97-4210-82d7-5512b31e9d03",
+    "GrpcConfig": { "Enabled": false }
+  },
+  "CacheBehaviors": { "Quantity": 0 },
+  "CustomErrorResponses": { "Quantity": 0 },
+  "PriceClass": "PriceClass_200",
+  "ViewerCertificate": {
+    "ACMCertificateArn": "arn:aws:acm:us-east-1:960243570517:certificate/da972d07-4a4e-4364-9f1b-5331aa82e3a7",
+    "SSLSupportMethod": "sni-only",
+    "MinimumProtocolVersion": "TLSv1.2_2021",
+    "CertificateSource": "acm"
+  },
+  "Restrictions": { "GeoRestriction": { "RestrictionType": "none", "Quantity": 0 } },
+  "WebACLId": ""
+}
