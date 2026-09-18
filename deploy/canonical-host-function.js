@@ -7,9 +7,9 @@ function handler(event) {
     for (var key in request.querystring) {
       var item = request.querystring[key];
       if (item.multiValue) {
-        for (var i = 0; i < item.multiValue.length; i++) parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(item.multiValue[i].value));
-      } else if (item.value !== '') parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(item.value));
-      else parts.push(encodeURIComponent(key));
+        for (var i = 0; i < item.multiValue.length; i++) parts.push(key + '=' + item.multiValue[i].value);
+      } else if (item.value !== '') parts.push(key + '=' + item.value);
+      else parts.push(key);
     }
     if (parts.length) query = '?' + parts.join('&');
     return {

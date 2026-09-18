@@ -6,9 +6,11 @@ import vm from 'node:vm';
 test('canonical host redirect preserves path and repeated query values', async () => {
   const source = await readFile('deploy/canonical-host-function.js', 'utf8');
   const context = {}; vm.createContext(context); vm.runInContext(source, context);
-  const response = context.handler({ request: { uri: '/guides/manse.html', headers: { host: { value: 'WWW.JAMIBLOSSOM.COM' } }, querystring: { q: { value: '사주' }, tag: { multiValue: [{ value: 'a' }, { value: 'b' }] } } } });
+  const response = context.handler({ request: { uri: '/guides/manse.html', headers: { host: { value: 'WWW.JAMIBLOSSOM.COM' } }, querystring: { q: { value: '%EC%82%AC%EC%A3%BC' }, x: { value: 'a%20b' }, tag: { multiValue: [{ value: 'a' }, { value: 'b' }] } } } });
   assert.equal(response.statusCode, 301);
-  assert.equal(response.headers.location.value, 'https://jamiblossom.com/guides/manse.html?q=%EC%82%AC%EC%A3%BC&tag=a&tag=b');
+  assert.equal(response.headers.location.value, 'https://jamiblossom.com/guides/manse.html?q=%EC%82%AC%EC%A3%BC&x=a%20b&tag=a&tag=b');
+  const reserved = context.handler({ request: { uri: '/', headers: { host: { value: 'www.jamiblossom.com' } }, querystring: { plus: { value: 'a+b' }, amp: { value: 'a%26b' }, equal: { value: 'a%3Db' } } } });
+  assert.equal(reserved.headers.location.value, 'https://jamiblossom.com/?plus=a+b&amp=a%26b&equal=a%3Db');
 });
 
 test('SEO pages have unique canonical URLs and sitemap coverage', async () => {
