@@ -127,7 +127,11 @@ export function scopeText(label: string, data: HoroscopeScope, palaces?: Palace[
     palaces?.[index] ? `${palaces[index].earthlyBranch}(본명 ${palaces[index].name})=${name}` : name,
   ).join(', ') : '-';
   const mutagen = data.mutagen.length ? data.mutagen.join(', ') : '-';
-  return `${label}: ${data.heavenlyStem}${data.earthlyBranch} ${data.name} / 운한 명궁의 본명 궁: ${scopeCurrentPalace(data, palaces)} / 궁 배치(인궁부터): ${palaceNames} / 사화(록·권·과·기 순): ${mutagen}`;
+  const moving = data.stars?.map((stars, index) => {
+    const palace = palaces?.[index];
+    return `${palace ? `${palace.name}(${palace.earthlyBranch})` : `${index + 1}궁`}: ${stars.length ? stars.map((star) => star.name).join(', ') : '-'}`;
+  }).join(' / ') || '-';
+  return `${label}: ${data.heavenlyStem}${data.earthlyBranch} ${data.name} / 운한 명궁의 본명 궁: ${scopeCurrentPalace(data, palaces)} / 궁 배치(인궁부터): ${palaceNames} / 사화(록·권·과·기 순): ${mutagen} / 궁별 이동성: ${moving}`;
 }
 
 export function scopeCurrentPalace(data: HoroscopeScope, palaces?: Palace[]): string {
@@ -202,6 +206,8 @@ export function buildFullText(chart: Chart, selectedIndex: number, currentAge?: 
   }
   if (chart.horoscope) {
     lines.push(`=== 운한 ===`);
+    lines.push(scopeText('나이', chart.horoscope.age, chart.palaces));
+    if (chart.horoscope.childhood) lines.push(scopeText('동한', chart.horoscope.childhood, chart.palaces));
     lines.push(scopeText('대한', chart.horoscope.decadal, chart.palaces));
     lines.push(scopeText('세운/유년', chart.horoscope.yearly, chart.palaces));
     lines.push(scopeText('유월', chart.horoscope.monthly, chart.palaces));
@@ -215,4 +221,55 @@ export function buildFullText(chart: Chart, selectedIndex: number, currentAge?: 
     );
   }
   return lines.join('\n');
+}
+
+export function buildSajuFullText(chart: Chart): string {
+  const s = chart.saju;
+  const pillars = [['시주', s.hour], ['일주', s.day], ['월주', s.month], ['년주', s.year]] as const;
+  const lines = [
+    '=== 만세력 사주 상세 ===',
+    `양력: ${chart.solarDate} / 음력: ${chart.lunarDate} / 간지일: ${chart.chineseDate}`,
+    `시각: ${chart.time} (${chart.timeRange})`,
+  ];
+  for (const [label, p] of pillars) {
+    lines.push(
+      `[${label}] ${p.cn}(${p.ko})`,
+      `천간십성: ${p.shiShenGan} / 지지십성: ${p.shiShenBranch}`,
+      `지장간: ${p.hideGan}(${p.hideGanKo}) / 지장간십성: ${p.shiShenZhi.join(', ') || '-'}`,
+      `12운성: ${p.diShi} / 납음: ${p.nayin} / 공망: ${p.xunKong || '-'}`,
+    );
+  }
+  lines.push(
+    '',
+    `태원: ${s.taiYuan} / 납음: ${s.taiYuanNaYin}`,
+    `태식: ${s.taiXi} / 납음: ${s.taiXiNaYin}`,
+    `명궁: ${s.mingGong} / 납음: ${s.mingGongNaYin}`,
+    `신궁: ${s.shenGong} / 납음: ${s.shenGongNaYin}`,
+    `일주 공망: ${s.dayXunKong}`,
+    `대운 진입: ${s.daYunStartSolarDateTime.replace('T', ' ')}`,
+    `현재 기준: ${s.daYunReferenceDateTime.replace('T', ' ')}`,
+    '',
+    '=== 대운 ===',
+  );
+  s.daYun.forEach((item, index) => lines.push(
+    `${index === s.currentDaYunIndex ? '[현재] ' : ''}${item.ganZhiKo || item.ganZhi} / ${item.startAge}~${item.endAge}세 / ${item.startSolarDateTime?.replace('T', ' ') || item.startYear}부터 ${item.endSolarDateTimeExclusive?.replace('T', ' ') || item.endYear} 전까지`,
+  ));
+  return lines.join('\n');
+}
+
+export function buildInterpretationPrompt(kind: 'saju' | 'ziwei', fullExport: string, question = '', duan = false): string {
+  const method = kind === 'saju' && duan
+    ? '단건업 계열 맹파의 체용·빈주·주공(做功) 관점을 검토하되, 공망(空亡)과 주공을 혼동하지 말고 검증된 규칙 근거가 없으면 가설 또는 보류로 표시하세요. 허가된 원문을 조회했다고 주장하지 마세요.'
+    : kind === 'saju'
+      ? '격국·용신을 단정하거나 점수화하지 말고 원국의 실제 십성, 지장간, 합충형파해와 대운 경계를 근거로 해석하세요.'
+      : '각 궁을 본궁·두 삼합궁·대궁·협궁·짝성·차성안궁과 함께 읽고, 비성사화와 현재 운한의 층위를 원국과 구분하세요.';
+  return [
+    '아래 계산 데이터를 빠뜨리거나 새로 만들어내지 말고 상세하게 풀이하세요.',
+    method,
+    '관찰된 데이터 → 해석 규칙 → 추론 순서로 쓰고, 서로 충돌하는 신호와 반례도 함께 제시하세요.',
+    '출생 정보가 불완전하거나 규칙의 학파 차이가 있으면 단정하지 말고 불확실성과 추가 확인 질문을 밝히세요.',
+    kind === 'ziwei' ? '12궁을 각각 독립된 소제목으로 모두 다룬 뒤 삼방사정, 사화, 대한·세운·월운·일운·시운을 종합하세요.' : '네 기둥, 월령, 일간, 십성, 지장간, 12운성, 납음·공망, 현재 대운을 차례로 다루고 근거 없는 연운은 만들지 마세요.',
+    question.trim() ? `\n사용자 질문:\n${question.trim()}` : '',
+    `\n계산 데이터:\n${fullExport}`,
+  ].filter(Boolean).join('\n');
 }

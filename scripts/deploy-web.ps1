@@ -5,7 +5,8 @@ param(
   [string]$Domain = 'jamiblossom.com',
   [string]$ReleaseId = '',
   [switch]$SkipBuild,
-  [switch]$SkipCloudFrontWait
+  [switch]$SkipCloudFrontWait,
+  [switch]$ValidateOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,7 +43,7 @@ try {
   $indexPath = Join-Path $distPath 'index.html'
   if (-not (Test-Path -LiteralPath $indexPath)) { throw 'web-dist/index.html is missing.' }
   $index = Get-Content -Raw -LiteralPath $indexPath
-  $references = [regex]::Matches($index, '(?:src|href)=["'']/?([^"''?#]+)') | ForEach-Object { $_.Groups[1].Value }
+  $references = [regex]::Matches($index, '(?:src|href)=["'']([^"''?#]+)') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notmatch '^(?:https?:)?//' -and $_ -notmatch '^(?:mailto:|tel:|data:)' } | ForEach-Object { $_.TrimStart('/') }
   foreach ($reference in $references) {
     if (-not (Test-Path -LiteralPath (Join-Path $distPath $reference))) { throw "Built index references missing file: $reference" }
   }
@@ -62,6 +63,10 @@ try {
   $version = [ordered]@{ release=$ReleaseId; deployedAtUtc=(Get-Date -AsUTC -Format 'o'); files=$manifest }
   $versionPath = Join-Path $distPath 'version.json'
   $version | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $versionPath -Encoding utf8NoBOM
+  if ($ValidateOnly) {
+    Write-Host "Validated release $ReleaseId locally: $($files.Count) files, $($references.Count) local HTML references, $($wasmFiles.Count) WASM asset(s)."
+    return
+  }
 
   $rollbackKey = "rollback/$ReleaseId/index.html"
   $rollbackVersionKey = "rollback/$ReleaseId/version.json"
@@ -73,11 +78,20 @@ try {
   if ($LASTEXITCODE -eq 0) {
     Invoke-Checked { aws s3api copy-object --bucket $Bucket --copy-source "$Bucket/version.json" --key $rollbackVersionKey --cache-control 'no-cache,no-store,must-revalidate' --content-type 'application/json' | Out-Null } 'Failed to preserve the previous version record.'
   }
-  Invoke-Checked { aws s3 sync $distPath "s3://$Bucket" --exclude 'index.html' --exclude 'version.json' --cache-control 'public,max-age=31536000,immutable' --no-progress } 'Immutable asset upload failed.'
+  Invoke-Checked { aws s3 sync (Join-Path $distPath 'assets') "s3://$Bucket/assets" --cache-control 'public,max-age=31536000,immutable' --no-progress } 'Immutable asset upload failed.'
+  $fontsPath = Join-Path $distPath 'fonts'
+  if (Test-Path -LiteralPath $fontsPath) { Invoke-Checked { aws s3 sync $fontsPath "s3://$Bucket/fonts" --cache-control 'public,max-age=86400' --no-progress } 'Font upload failed.' }
+  foreach ($mutable in @('robots.txt', 'sitemap.xml', 'guides/manse.html', 'guides/ziwei.html')) {
+    $mutablePath = Join-Path $distPath $mutable
+    if (Test-Path -LiteralPath $mutablePath) {
+      $contentType = if ($mutable -eq 'sitemap.xml') { 'application/xml' } elseif ($mutable.EndsWith('.html')) { 'text/html' } else { 'text/plain' }
+      Invoke-Checked { aws s3 cp $mutablePath "s3://$Bucket/$mutable" --cache-control 'no-cache,no-store,must-revalidate' --content-type $contentType --no-progress } "Mutable SEO upload failed: $mutable"
+    }
+  }
   Invoke-Checked { aws s3 cp $versionPath "s3://$Bucket/version.json" --cache-control 'no-cache,no-store,must-revalidate' --content-type 'application/json' --no-progress } 'Version upload failed.'
   Invoke-Checked { aws s3 cp $indexPath "s3://$Bucket/index.html" --cache-control 'no-cache,no-store,must-revalidate' --content-type 'text/html' --no-progress } 'HTML upload failed.'
 
-  $invalidationId = aws cloudfront create-invalidation --distribution-id $DistributionId --paths '/' '/index.html' '/version.json' --query 'Invalidation.Id' --output text
+  $invalidationId = aws cloudfront create-invalidation --distribution-id $DistributionId --paths '/' '/index.html' '/version.json' '/robots.txt' '/sitemap.xml' '/guides/*' --query 'Invalidation.Id' --output text
   if ($LASTEXITCODE -ne 0) { throw 'CloudFront invalidation failed.' }
   if (-not $SkipCloudFrontWait) {
     Invoke-Checked { aws cloudfront wait invalidation-completed --distribution-id $DistributionId --id $invalidationId } 'CloudFront invalidation did not complete.'

@@ -1,11 +1,12 @@
 import './styles.css';
-import { PALACE_GRID_AREAS, TIME_BRANCH_OPTIONS, seoulNowParts, timeToIndexFromTime } from 'jamiblossom';
+import { PALACE_GRID_AREAS, TIME_BRANCH_OPTIONS, buildFullText, buildInterpretationPrompt, buildSajuFullText, seoulNowParts, timeToIndexFromTime } from 'jamiblossom';
 import type { Chart, ChartRequest, Palace, SajuPillar } from 'jamiblossom';
 
 type Tab = 'ziwei' | 'saju';
 
 const root = document.querySelector<HTMLDivElement>('#app');
 if (!root) throw new Error('앱 루트가 없습니다.');
+root.replaceChildren();
 
 const el = <K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -36,7 +37,6 @@ const header = el('header', 'hero');
 header.append(
   el('p', 'eyebrow', 'JAMI BLOSSOM'),
   el('h1', '', '무료 만세력 · 자미두수'),
-  el('p', 'lede', '사주 원국과 대운, 자미두수 12궁의 전체 계산 데이터를 확인합니다.'),
 );
 
 const layout = el('main', 'layout');
@@ -105,15 +105,37 @@ panel.append(inputTitle, form);
 const resultPanel = el('section', 'result-panel');
 const status = el('div', 'status'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
 const tabs = el('div', 'tabs'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', '결과 보기');
+const exportActions = el('div', 'export-actions');
+const copyFullButton = el('button', 'secondary', '전체 명반 복사'); copyFullButton.type = 'button'; copyFullButton.disabled = true;
+const copyPromptButton = el('button', 'secondary', '풀이 프롬프트 복사'); copyPromptButton.type = 'button'; copyPromptButton.disabled = true;
+exportActions.append(copyFullButton, copyPromptButton);
 const content = el('div', 'result-content');
 const legend = el('div', 'star-legend'); [['보좌·길성','lucky-star'],['살성','malefic-star'],['록존·천마','special-star'],['록·권·과·기','mutagen-key']].forEach(([label, cls]) => legend.append(el('span', cls, label)));
-resultPanel.append(status, tabs, legend, content);
+resultPanel.append(status, tabs, exportActions, legend, content);
 layout.append(panel, resultPanel);
-root.append(header, layout, el('footer', '', 'Jami Blossom · 계산 결과는 전통 역학의 원국 자료이며 중요한 결정의 유일한 근거로 사용하지 마세요.'));
+const footer = el('footer', 'guide-links');
+const manseGuide = el('a', '', '만세력 사용법'); manseGuide.href = '/guides/manse.html';
+const ziweiGuide = el('a', '', '자미두수 사용법'); ziweiGuide.href = '/guides/ziwei.html';
+footer.append(manseGuide, ziweiGuide);
+root.append(header, layout, footer);
+const exportDialog = el('dialog', 'export-dialog');
+const dialogTitle = el('h2', '', '복사할 내용');
+const promptMode = el('select');
+[['general', '일반 상세 풀이'], ['duan', '단건업 계열 맹파']].forEach(([value, label]) => { const option = el('option', '', label); option.value = value; promptMode.append(option); });
+const userQuestion = el('textarea'); userQuestion.rows = 3; userQuestion.placeholder = '궁금한 내용을 덧붙이세요. 예: 관계, 진로, 특정 시기의 흐름';
+const exportPreview = el('textarea', 'export-preview'); exportPreview.readOnly = true; exportPreview.rows = 18;
+const dialogMessage = el('p', 'copy-message');
+const confirmCopy = el('button', 'primary', '클립보드에 복사'); confirmCopy.type = 'button';
+const closeDialog = el('button', 'secondary', '닫기'); closeDialog.type = 'button'; closeDialog.addEventListener('click', () => exportDialog.close());
+const dialogActions = el('div', 'dialog-actions'); dialogActions.append(confirmCopy, closeDialog);
+exportDialog.append(dialogTitle, field('풀이 방식', promptMode), field('추가 질문 (선택)', userQuestion), exportPreview, dialogMessage, dialogActions);
+document.body.append(exportDialog);
 
 let activeTab: Tab = location.hash === '#ziwei' ? 'ziwei' : 'saju';
 let chart: Chart | null = null;
 let calculatedKey = '';
+let lastRequest: ChartRequest | null = null;
+let selectedPalaceIndex = 0;
 const worker = new Worker(new URL('./chart.worker.ts', import.meta.url), { type: 'module' });
 let requestId = 0;
 let chartOverlayCleanup = () => {};
@@ -129,6 +151,51 @@ const requestFromForm = (): ChartRequest => {
 
 const requestKey = () => JSON.stringify({ calendar: calendar.value, date: `${year.value}-${month.value}-${day.value}`, time: time.value, gender: gender.value, isLeapMonth: calendar.value === 'lunar' && leap.checked, ziTimeMode: ziMode.value, flowDate: flowDate.value, flowTime: flowTime.value });
 
+let exportKind: 'full' | 'prompt' = 'full';
+const exportIsFresh = () => Boolean(chart && lastRequest && calculatedKey && calculatedKey === requestKey());
+const fullExport = () => {
+  if (!chart || !lastRequest) return '';
+  const requestHeader = [
+    '=== 계산 조건 ===',
+    `달력: ${lastRequest.calendar === 'solar' ? '양력' : '음력'}${lastRequest.isLeapMonth ? ' 윤달' : ''}`,
+    `출생 입력: ${lastRequest.date} ${lastRequest.time} / 성별: ${lastRequest.gender}`,
+    `자시 기준: ${lastRequest.ziTimeMode === 'split' ? '야자시·조자시 분리' : '자시 날짜 고정'}`,
+    '시진 보정: 입력 시각에서 30분을 앞당겨 판정',
+    `운 기준: ${lastRequest.flowDate} ${lastRequest.flowTime}`,
+  ].join('\n');
+  const report = activeTab === 'ziwei' ? buildFullText(chart, selectedPalaceIndex) : buildSajuFullText(chart);
+  return `${requestHeader}\n\n${report}`;
+};
+const refreshExportPreview = () => {
+  const report = fullExport();
+  exportPreview.value = exportKind === 'prompt'
+    ? buildInterpretationPrompt(activeTab, report, userQuestion.value, promptMode.value === 'duan')
+    : report;
+};
+const openExport = (kind: 'full' | 'prompt') => {
+  if (!exportIsFresh()) return;
+  exportKind = kind; dialogTitle.textContent = kind === 'full' ? '전체 명반 복사' : '풀이 프롬프트 복사';
+  promptMode.closest('label')!.hidden = kind === 'full' || activeTab === 'ziwei'; userQuestion.closest('label')!.hidden = kind === 'full';
+  dialogMessage.textContent = ''; refreshExportPreview(); exportDialog.showModal(); exportPreview.focus(); exportPreview.select();
+};
+copyFullButton.addEventListener('click', () => openExport('full'));
+copyPromptButton.addEventListener('click', () => openExport('prompt'));
+promptMode.addEventListener('change', refreshExportPreview); userQuestion.addEventListener('input', refreshExportPreview);
+confirmCopy.addEventListener('click', async () => {
+  refreshExportPreview();
+  try {
+    await navigator.clipboard.writeText(exportPreview.value);
+    dialogMessage.textContent = '클립보드에 복사했습니다.';
+  } catch {
+    exportPreview.focus(); exportPreview.select();
+    dialogMessage.textContent = '자동 복사를 사용할 수 없습니다. 선택된 내용을 직접 복사해 주세요.';
+  }
+});
+
+const updateExportAvailability = () => {
+  const disabled = !exportIsFresh(); copyFullButton.disabled = disabled; copyPromptButton.disabled = disabled;
+};
+
 const renderStatus = (kind: 'loading' | 'ready' | 'error' | 'stale', message: string) => {
   status.className = `status ${kind}`; status.textContent = message;
 };
@@ -139,7 +206,7 @@ const renderTabs = () => {
   labels.forEach(([id, label]) => {
     const button = el('button', activeTab === id ? 'active' : '', label);
     button.type = 'button'; button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(activeTab === id));
-    button.addEventListener('click', () => { activeTab = id; history.replaceState(null, '', id === 'ziwei' ? '#ziwei' : location.pathname); renderTabs(); renderResult(); });
+    button.addEventListener('click', () => { activeTab = id; history.replaceState(null, '', id === 'ziwei' ? '#ziwei' : location.pathname); renderTabs(); renderResult(); updateExportAvailability(); });
     tabs.append(button);
   });
 };
@@ -186,13 +253,14 @@ const renderZiwei = (value: Chart) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.classList.add('relation-lines'); svg.setAttribute('aria-hidden', 'true'); grid.append(svg);
   let selected = value.palaces.findIndex((palace) => palace.earthlyBranch === value.earthlyBranchOfSoulPalace);
   if (selected < 0) selected = 0;
+  selectedPalaceIndex = selected;
   const detail = el('section', 'relation-detail');
   const redraw = () => {
     const relation = value.surrounded.find((item) => item.self === selected);
     const related = new Set<number>(relation ? [relation.self, ...relation.trine, relation.opposite] : [selected]);
     grid.querySelectorAll('.palace-card').forEach((node) => node.remove());
     const currentDecadal = value.horoscope?.decadal?.index ?? null;
-    value.palaces.slice(0, 12).forEach((palace, index) => grid.append(palaceCard(palace, index, related, currentDecadal, () => { selected = index; redraw(); })));
+    value.palaces.slice(0, 12).forEach((palace, index) => grid.append(palaceCard(palace, index, related, currentDecadal, () => { selected = index; selectedPalaceIndex = index; redraw(); })));
     const names = relation ? [relation.self, ...relation.trine, relation.opposite].map((index) => value.palaces[index]?.name || '-') : [];
     const selectedPalace = value.palaces[selected];
     const fly = value.flies.find((item) => item.from === selected);
@@ -215,12 +283,20 @@ const renderZiwei = (value: Chart) => {
       const bounds = grid.getBoundingClientRect();
       const point = (index: number) => {
         const node = grid.querySelector<HTMLElement>(`[data-palace-index="${index}"]`); if (!node) return null;
-        const rect = node.getBoundingClientRect(); return `${rect.left - bounds.left + rect.width / 2},${rect.top - bounds.top + rect.height / 2}`;
+        const rect = node.getBoundingClientRect();
+        const anchors: Record<string, [number, number]> = {
+          si:[1,1], wu:[.5,1], wei:[.5,1], shen:[0,1], chen:[1,.5], you:[0,.5],
+          mao:[1,.5], xu:[0,.5], yin:[1,0], chou:[.5,0], zi:[.5,0], hai:[0,0],
+        };
+        const [ax, ay] = anchors[node.style.gridArea] || [.5, .5];
+        return { x: rect.left - bounds.left + rect.width * ax, y: rect.top - bounds.top + rect.height * ay };
       };
       const triangle = [relation.self, ...relation.trine].map(point).filter(Boolean);
-      if (triangle.length === 3) { const polygon = document.createElementNS(svg.namespaceURI, 'polygon'); polygon.setAttribute('points', triangle.join(' ')); polygon.classList.add('trine-line'); svg.append(polygon); }
+      if (triangle.length === 3) { const polygon = document.createElementNS(svg.namespaceURI, 'polygon'); polygon.setAttribute('points', triangle.map((p) => `${p!.x},${p!.y}`).join(' ')); polygon.classList.add('trine-line'); svg.append(polygon); }
       const start = point(relation.self); const end = point(relation.opposite);
-      if (start && end) { const line = document.createElementNS(svg.namespaceURI, 'line'); const [x1,y1] = start.split(','); const [x2,y2] = end.split(','); Object.entries({ x1,y1,x2,y2 }).forEach(([key,val]) => line.setAttribute(key,val)); line.classList.add('opposite-line'); svg.append(line); }
+      if (start && end) { const line = document.createElementNS(svg.namespaceURI, 'line'); Object.entries({ x1:start.x,y1:start.y,x2:end.x,y2:end.y }).forEach(([key,val]) => line.setAttribute(key,String(val))); line.classList.add('opposite-line'); svg.append(line); }
+      const endpoints = [...triangle, start, end].filter((point, index, all) => point && all.findIndex((other) => other && Math.abs(other.x - point.x) < 1 && Math.abs(other.y - point.y) < 1) === index);
+      endpoints.forEach((point) => { const circle = document.createElementNS(svg.namespaceURI, 'circle'); circle.setAttribute('cx', String(point!.x)); circle.setAttribute('cy', String(point!.y)); circle.setAttribute('r', '5'); circle.classList.add('relation-endpoint'); svg.append(circle); });
     });
   };
   const center = el('section', 'chart-summary');
@@ -333,6 +409,7 @@ const hasCompleteValidInput = () => {
 };
 
 const calculate = () => {
+  copyFullButton.disabled = true; copyPromptButton.disabled = true;
 renderStatus('loading', '로컬 엔진을 불러와 명반을 계산하고 있습니다…');
   const request = requestFromForm();
   const submissionKey = requestKey();
@@ -344,16 +421,17 @@ renderStatus('loading', '로컬 엔진을 불러와 명반을 계산하고 있�
     if (id !== requestId) return;
     document.body.dataset.engineInitializations = String(event.data.initializationCount ?? 0);
     if (event.data.error || !event.data.chart) {
-      chart = null; calculatedKey = '';
+      chart = null; lastRequest = null; calculatedKey = '';
       renderStatus('error', `계산할 수 없습니다: ${event.data.error || '알 수 없는 오류'}`); renderResult(); return;
     }
-    chart = event.data.chart; calculatedKey = submissionKey;
+    chart = event.data.chart; lastRequest = request; calculatedKey = submissionKey;
     if (requestKey() === calculatedKey) {
       renderStatus('ready', `${request.date} ${request.time} · 운 기준 ${request.flowDate} ${request.flowTime}`);
     } else {
       renderStatus('loading', '바뀐 입력으로 다시 계산하고 있습니다…');
     }
     renderResult();
+    updateExportAvailability();
   };
   worker.addEventListener('message', onMessage);
 };
@@ -363,7 +441,8 @@ form.addEventListener('input', () => {
   leap.disabled = calendar.value !== 'lunar';
   day.max = calendar.value === 'lunar' ? '30' : '31';
   if (!hasCompleteValidInput()) {
-    requestId += 1; chart = null; calculatedKey = '';
+    requestId += 1; chart = null; lastRequest = null; calculatedKey = '';
+    updateExportAvailability();
     renderStatus('loading', '입력을 마치면 즉시 계산합니다.'); renderResult(); return;
   }
   calculate();

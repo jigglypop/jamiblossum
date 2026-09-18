@@ -5,7 +5,7 @@ import test from 'node:test';
 import { astro } from 'iztro';
 import { Solar } from 'lunar-javascript';
 import {
-  calculateZiweiChart, buildFullText, scopeCurrentPalace, scopeText,
+  calculateZiweiChart, buildFullText, buildPalaceText, scopeCurrentPalace, scopeText,
   nominalAgeFromSolarDate, lunarNominalAgeFromSolarDate, decadalDateRangeFromSolarDate,
   TIME_BRANCH_OPTIONS, timeToIndexFromTime, pairStarsText,
   createJamiBlossomEngine,
@@ -14,6 +14,21 @@ import * as wasm from '../dist/wasm-pkg/jamiblossom_core.js';
 
 const birth = { calendar: 'solar', date: '1991-01-12', gender: 'male', timeIndex: 1 };
 const at = flowDate => calculateZiweiChart({ ...birth, flowDate });
+
+test('full export retains every palace relation and every scope moving star without truncation', () => {
+  const chart = calculateZiweiChart({ ...birth, flowDate: '2026-09-19', flowTime: '12:00' });
+  const report = buildFullText(chart, chart.horoscope.decadal.index);
+  for (let index = 0; index < 12; index++) {
+    assert.ok(report.includes(buildPalaceText(chart.palaces[index], chart.palaces, chart.surrounded, index)));
+  }
+  for (const [label, scope] of [['나이', chart.horoscope.age], ['동한', chart.horoscope.childhood], ['대한', chart.horoscope.decadal], ['세운/유년', chart.horoscope.yearly], ['유월', chart.horoscope.monthly], ['유일', chart.horoscope.daily], ['유시', chart.horoscope.hourly]]) {
+    if (!scope) continue;
+    assert.ok(report.includes(`${label}:`));
+    for (const stars of scope.stars || []) for (const star of stars) assert.ok(report.includes(star.name));
+  }
+  assert.match(report, /=== 비성사화 ===/);
+  assert.match(report, /=== 선택 궁 상세 ===/);
+});
 
 test('lunar-year decades switch on Lunar New Year, including both decade boundaries', () => {
   for (const [date, age, palace] of [
