@@ -1,0 +1,46 @@
+name: Weekly SEO analysis
+
+on:
+  schedule:
+    - cron: '20 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Apply one eligible metadata variant to production
+        type: boolean
+        default: true
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  analyze:
+    if: vars.SEO_AUTOMATION_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: aws-actions/configure-aws-credentials@v5
+        if: github.event_name == 'schedule' || inputs.deploy
+        with:
+          role-to-assume: arn:aws:iam::960243570517:role/jamiblossum-github-production-deploy
+          aws-region: ap-northeast-2
+      - name: Analyze final Search Console data
+        if: github.event_name == 'workflow_dispatch' && !inputs.deploy
+        env:
+          GSC_SITE_URL: sc-domain:jamiblossom.com
+          GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/seo-batch.mjs
+      - name: Analyze and apply one eligible metadata variant
+        if: github.event_name == 'schedule' || inputs.deploy
+        env:
+          GSC_SITE_URL: sc-domain:jamiblossom.com
+          GSC_SERVICE_ACCOUNT_JSON: ${{ secrets.GSC_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/seo-batch.mjs --apply --deploy

@@ -39,7 +39,8 @@
     "prebuild:web": "pnpm build",
     "build:web": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 5180 --strictPort",
-    "typecheck:web": "tsc -p tsconfig.app.json --noEmit"
+    "typecheck:web": "tsc -p tsconfig.app.json --noEmit",
+    "seo:analyze": "node scripts/seo-batch.mjs"
   },
   "dependencies": {
     "iztro": "^2.5.8",
