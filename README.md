@@ -1,4 +1,6 @@
-# jamiblossom
+# 자미블로썸
+
+![자미블로썸 포스터](public/main.png)
 
 WASM-first Zi Wei Dou Shu and East Asian calendar charting library.
 
